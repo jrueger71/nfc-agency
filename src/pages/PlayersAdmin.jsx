@@ -38,6 +38,12 @@ export default function PlayersAdmin() {
   const [tab, setTab] = useState('players')
   const [modal, setModal] = useState(null)
 
+  const handleDeleteTx = async (id) => {
+    if (!window.confirm('¿Eliminar esta transacción? Esta acción no se puede deshacer.')) return
+    await supabase.from('transactions').delete().eq('id', id)
+    load()
+  }
+
   const load = async () => {
     setLoading(true)
     const [p, ci, ac, tx] = await Promise.all([
