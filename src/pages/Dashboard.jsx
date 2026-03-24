@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import Cumpleanos from '../components/Cumpleanos'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
 
 function fmt$(n) {
@@ -220,6 +221,7 @@ export default function Dashboard() {
           </table>
         </div>
       </div>
+      <Cumpleanos />
     </div>
   )
 }

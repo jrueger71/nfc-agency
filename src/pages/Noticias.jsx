@@ -1,8 +1,17 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 
 const GOLD = '#C9A84C'
+
+function getEmbedUrl(url) {
+  if (!url) return null
+  const vimeoMatch = url.match(/vimeo\.com\/(?:video\/)?(\d+)/)
+  if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}?title=0&byline=0&portrait=0`
+  const ytMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([a-zA-Z0-9_-]{11})/)
+  if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`
+  return null
+}
 const INPUT = {
   width:'100%', background:'rgba(255,255,255,0.06)',
   border:'1px solid rgba(201,168,76,0.2)', borderRadius:6,
@@ -43,11 +52,14 @@ export default function Noticias({ publicView = false }) {
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const photoRef = useRef()
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [filterTipo, setFilterTipo] = useState('')
   const [form, setForm] = useState({
     titulo:'', contenido:'', tipo:'noticia',
-    jugador_id:'', fecha: new Date().toISOString().split('T')[0], visible:true
+    jugador_id:'', fecha: new Date().toISOString().split('T')[0], visible:true,
+    imagen_url:'', video_url:''
   })
   const setF = (k,v) => setForm(f=>({...f,[k]:v}))
 
@@ -66,6 +78,20 @@ export default function Noticias({ publicView = false }) {
 
   useEffect(() => { load() }, [])
 
+  const uploadPhoto = async (file) => {
+    if (!file) return
+    setUploadingPhoto(true)
+    const ext = file.name.split('.').pop().toLowerCase()
+    const path = `noticias/${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('player-media').upload(path, file, { upsert:true })
+    if (error) { setMsg('Error subiendo foto'); setUploadingPhoto(false); return }
+    const { data:{ publicUrl } } = supabase.storage.from('player-media').getPublicUrl(path)
+    setF('imagen_url', publicUrl)
+    setUploadingPhoto(false)
+    setMsg('✓ Foto cargada')
+    setTimeout(()=>setMsg(''),2000)
+  }
+
   const handleSave = async () => {
     if (!form.titulo || !form.fecha) { setMsg('Título y fecha son requeridos'); return }
     setSaving(true); setMsg('')
@@ -76,11 +102,13 @@ export default function Noticias({ publicView = false }) {
       jugador_id: form.jugador_id||null,
       fecha: form.fecha,
       visible: form.visible,
+      imagen_url: form.imagen_url||null,
+      video_url: form.video_url||null,
     })
     setSaving(false)
     if (error) { setMsg('Error: '+error.message); return }
     setMsg('✓ Publicado')
-    setForm({ titulo:'', contenido:'', tipo:'noticia', jugador_id:'', fecha:new Date().toISOString().split('T')[0], visible:true })
+    setForm({ titulo:'', contenido:'', tipo:'noticia', jugador_id:'', fecha:new Date().toISOString().split('T')[0], visible:true, imagen_url:'', video_url:'' })
     setShowForm(false)
     load()
     setTimeout(()=>setMsg(''),3000)
@@ -176,6 +204,18 @@ export default function Noticias({ publicView = false }) {
               <label style={LABEL}>CONTENIDO</label>
               <textarea style={{...INPUT,resize:'vertical',minHeight:80}} value={form.contenido} onChange={e=>setF('contenido',e.target.value)} placeholder="Detalle de la noticia o hito..."/>
             </div>
+            <div>
+              <label style={LABEL}>FOTO</label>
+              <input ref={photoRef} type="file" accept="image/*" style={{display:'none'}} onChange={e=>uploadPhoto(e.target.files[0])}/>
+              <button type="button" onClick={()=>photoRef.current?.click()} disabled={uploadingPhoto}
+                style={{...INPUT,textAlign:'center',cursor:'pointer',color:form.imagen_url?'#4ade80':GOLD,borderStyle:'dashed'}}>
+                {uploadingPhoto?'Subiendo...':form.imagen_url?'✓ Foto cargada':'+ Subir foto'}
+              </button>
+            </div>
+            <div>
+              <label style={LABEL}>VIDEO (Vimeo o YouTube)</label>
+              <input style={INPUT} value={form.video_url||''} onChange={e=>setF('video_url',e.target.value)} placeholder="https://vimeo.com/123456789"/>
+            </div>
           </div>
           <div style={{display:'flex',gap:8,marginTop:16,alignItems:'center'}}>
             <button className="btn-gold" onClick={handleSave} disabled={saving}>{saving?'PUBLICANDO...':'PUBLICAR'}</button>
@@ -211,7 +251,18 @@ export default function Noticias({ publicView = false }) {
                       {n.players.name}
                     </div>
                   )}
-                  {n.contenido && <p style={{fontSize:13,color:'rgba(255,255,255,0.45)',lineHeight:1.6}}>{n.contenido}</p>}
+                  {n.imagen_url && (
+                    <div style={{margin:'10px 0',borderRadius:6,overflow:'hidden',maxHeight:180}}>
+                      <img src={n.imagen_url} style={{width:'100%',objectFit:'cover',display:'block'}} alt={n.titulo}/>
+                    </div>
+                  )}
+                  {n.contenido && <p style={{fontSize:13,color:'rgba(255,255,255,0.45)',lineHeight:1.6,marginBottom:n.video_url?8:0}}>{n.contenido}</p>}
+                  {n.video_url && getEmbedUrl(n.video_url) && (
+                    <div style={{marginTop:8,borderRadius:6,overflow:'hidden'}}>
+                      <iframe src={getEmbedUrl(n.video_url)} style={{width:'100%',height:180,border:'none',display:'block'}}
+                        allow="autoplay; fullscreen" allowFullScreen title={n.titulo}/>
+                    </div>
+                  )}
                   {isAdmin && (
                     <div style={{display:'flex',gap:8,marginTop:12,paddingTop:10,borderTop:'1px solid rgba(255,255,255,0.04)'}}>
                       <button onClick={()=>toggleVisible(n)} style={{fontSize:10,padding:'3px 8px',borderRadius:3,border:'1px solid rgba(255,255,255,0.1)',background:'transparent',color:'rgba(255,255,255,0.4)',cursor:'pointer',fontFamily:'inherit'}}>
