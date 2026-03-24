@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import Noticias from './Noticias'
 
 const GOLD = '#C9A84C'
 const NAVY2 = '#0f1a3a'
@@ -110,24 +111,22 @@ export default function Landing() {
   const countYears = useCounter(3, 1600, statsInView)
   const countContracts = useCounter(players.filter(p => p.club_contract_active).length || 12, 1900, statsInView)
 
+  const [noticias, setNoticias] = useState([])
+
   useEffect(() => {
     setTimeout(() => setHeroVisible(true), 100)
-    // Use players_full_info for public landing — only safe columns
-    supabase.from('players_full_info')
-      .select('id,name,position,club_name,club_contract_active,height,weight,skill_foot')
-      .order('name')
-      .then(({ data, error }) => {
-        if (error) {
-          // Fallback to players table
-          supabase.from('players').select('id,name,foto_url,skill_foot').order('name').then(({ data: pd }) => {
-            setPlayers(pd || [])
-            setLoading(false)
-          })
-        } else {
-          setPlayers(data || [])
-          setLoading(false)
-        }
-      })
+    Promise.all([
+      supabase.from('players_full_info').select('id,name,position,club_name,club_contract_active').order('name'),
+      supabase.from('players').select('id,foto_url'),
+      supabase.from('noticias').select('*,players(name,foto_url)').eq('visible',true).order('fecha',{ascending:false}).limit(6),
+    ]).then(([{data:pfi},{data:pp},{data:nn}]) => {
+      const fotoMap = {}
+      if (pp) pp.forEach(p => { fotoMap[p.id] = p.foto_url })
+      const merged = (pfi||[]).map(p => ({...p, foto_url: fotoMap[p.id]||null}))
+      setPlayers(merged)
+      setNoticias(nn||[])
+      setLoading(false)
+    })
   }, [])
 
   const filtered = filter === 'Todos' ? players : players.filter(p => p.position === filter)
@@ -326,6 +325,11 @@ export default function Landing() {
           </div>
         </div>
       </section>
+
+      {/* NOTICIAS */}
+      {noticias.length > 0 && (
+        <Noticias publicView={true} />
+      )}
 
       {/* FOOTER */}
       <footer style={{ background:'#030810', borderTop:'1px solid rgba(201,168,76,0.08)', padding:'24px', textAlign:'center' }}>

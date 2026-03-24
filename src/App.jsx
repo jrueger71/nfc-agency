@@ -8,6 +8,7 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import PlayersAdmin from './pages/PlayersAdmin'
 import Finanzas from './pages/Finanzas'
+import Noticias from './pages/Noticias'
 
 export const AuthContext = createContext(null)
 export const useAuth = () => useContext(AuthContext)
@@ -17,7 +18,7 @@ function ProtectedRoute({ children, allowedRoles }) {
   if (!session) return <Navigate to="/login" replace />
   if (allowedRoles && !allowedRoles.includes(userRole)) {
     return (
-      <div style={{ textAlign:'center', padding:60, color:'#f87171', fontFamily:'Bebas Neue', letterSpacing:2 }}>
+      <div style={{ textAlign:'center', padding:60, color:'#f87171', fontFamily:'Bebas Neue', letterSpacing:2, fontSize:18 }}>
         ACCESO RESTRINGIDO — SIN PERMISOS PARA ESTA SECCIÓN
       </div>
     )
@@ -63,8 +64,9 @@ export default function App() {
         <Route path="/jugador/:id" element={<PlayerDetail />} />
         <Route path="/login" element={session ? <Navigate to="/dashboard" /> : <Login />} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/finanzas" element={<ProtectedRoute allowedRoles={['admin','digitador']}><Finanzas userRole={userRole} /></ProtectedRoute>} />
+        <Route path="/finanzas" element={<ProtectedRoute allowedRoles={['admin','digitador']}><Finanzas /></ProtectedRoute>} />
         <Route path="/admin/jugadores" element={<ProtectedRoute allowedRoles={['admin']}><PlayersAdmin /></ProtectedRoute>} />
+        <Route path="/admin/noticias" element={<ProtectedRoute allowedRoles={['admin']}><Noticias /></ProtectedRoute>} />
       </Routes>
     </AuthContext.Provider>
   )
