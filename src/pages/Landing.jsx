@@ -92,9 +92,9 @@ const CLUBS = [
 ]
 
 const TEAM = [
-  { name:'Aldo Maldonado', role:'Fundador · Agente FIFA', license:'Licencia FIFA 202406-7288', bio:'Agente FIFA certificado con amplia trayectoria en representación de futbolistas. Fundó Nueva Fútbol Chile SpA en 2023 con el objetivo de profesionalizar la representación del talento joven chileno.', initials:'AM', color:'#1B2B5E' },
-  { name:'Marcos González', role:'Socio · Scout', license:'Scouting & Desarrollo', bio:'Especialista en detección y desarrollo de talento. Responsable de identificar promesas del fútbol masculino y femenino en todo Chile, construyendo el pipeline de jugadores de la agencia.', initials:'MG', color:'#243580' },
-  { name:'Jorge Rueger', role:'Asesor', license:'Gestión & Estrategia', bio:'Asesor estratégico de la agencia. Apoya la gestión operacional, el desarrollo tecnológico y la planificación de largo plazo para consolidar a Nueva Fútbol Chile como referente regional.', initials:'JR', color:'#7a6025' },
+  { name:'Aldo Maldonado', role:'Fundador · Agente FIFA', license:'Licencia FIFA 202406-7288', bio:'Agente FIFA certificado con amplia trayectoria en representación de futbolistas. Fundó Nueva Fútbol Chile SpA en 2023 con el objetivo de profesionalizar la representación del talento joven chileno.', initials:'AM', color:'#1B2B5E', photo:'https://qgjdphqmwgrkwfbxbyhc.supabase.co/storage/v1/object/public/player-media/equipo_aldo.jpg' },
+  { name:'Marcos González', role:'Socio · Scout', license:'Scouting & Desarrollo', bio:'Especialista en detección y desarrollo de talento. Responsable de identificar promesas del fútbol masculino y femenino en todo Chile, construyendo el pipeline de jugadores de la agencia.', initials:'MG', color:'#243580', photo:'https://qgjdphqmwgrkwfbxbyhc.supabase.co/storage/v1/object/public/player-media/equipo_marcos.jpg' },
+  { name:'Jorge Rueger', role:'Asesor', license:'Gestión & Estrategia', bio:'Asesor estratégico de la agencia. Apoya la gestión operacional, el desarrollo tecnológico y la planificación de largo plazo para consolidar a Nueva Fútbol Chile como referente regional.', initials:'JR', color:'#7a6025', photo:'https://qgjdphqmwgrkwfbxbyhc.supabase.co/storage/v1/object/public/player-media/equipo_jorge.jpg' },
 ]
 
 export default function Landing() {
@@ -274,8 +274,11 @@ export default function Landing() {
             <div key={m.name} style={{ background:'#0f1a3a', border:'1px solid rgba(201,168,76,0.12)', borderRadius:12, padding:'28px 24px', textAlign:'center', transition:'all .2s' }}
               onMouseEnter={e=>{ e.currentTarget.style.borderColor=GOLD; e.currentTarget.style.transform='translateY(-3px)' }}
               onMouseLeave={e=>{ e.currentTarget.style.borderColor='rgba(201,168,76,0.12)'; e.currentTarget.style.transform='translateY(0)' }}>
-              <div style={{ width:80, height:80, borderRadius:'50%', background:m.color, border:`2px solid ${GOLD}`, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'Bebas Neue', fontSize:26, color:'#fff', margin:'0 auto 16px' }}>
-                {m.initials}
+              <div style={{ width:88, height:88, borderRadius:'50%', background:m.color, border:`2px solid ${GOLD}`, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'Bebas Neue', fontSize:26, color:'#fff', margin:'0 auto 16px', overflow:'hidden' }}>
+                {m.photo
+                  ? <img src={m.photo} alt={m.name} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'top'}} onError={e=>{e.target.style.display='none'}}/>
+                  : m.initials
+                }
               </div>
               <div style={{ fontFamily:'Bebas Neue', fontSize:18, color:'#fff', letterSpacing:1, marginBottom:4 }}>{m.name}</div>
               <div style={{ fontSize:12, color:GOLD, fontWeight:600, marginBottom:4 }}>{m.role}</div>
