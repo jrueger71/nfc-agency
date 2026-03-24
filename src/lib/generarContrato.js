@@ -10,16 +10,29 @@ const BLACK = [0, 0, 0]
 const GRAY = [80, 80, 80]
 const LIGHT_GRAY = [240, 240, 240]
 
-function addHeader(doc, pageNum, totalPages) {
+function addHeader(doc, pageNum, totalPages, logoDataUrl) {
+  // Logo area
+  if (logoDataUrl) {
+    try {
+      doc.addImage(logoDataUrl, 'JPEG', 15, 3, 18, 10)
+    } catch(e) {}
+  } else {
+    // Text fallback
+    doc.setFontSize(8)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(...NAVY)
+    doc.text('NFC', 15, 9)
+  }
+
   // Header line
   doc.setDrawColor(...GOLD)
   doc.setLineWidth(0.8)
-  doc.line(15, 12, 195, 12)
+  doc.line(35, 12, 195, 12)
 
   doc.setFontSize(7)
   doc.setTextColor(...GRAY)
   doc.setFont('helvetica', 'normal')
-  doc.text('CONTRATO DE REPRESENTACIÓN Y PRESTACIÓN DE SERVICIOS — NUEVA FÚTBOL CHILE SpA', 15, 9)
+  doc.text('CONTRATO DE REPRESENTACIÓN Y PRESTACIÓN DE SERVICIOS — NUEVA FÚTBOL CHILE SpA', 36, 9)
   doc.text(`Página ${pageNum} de ${totalPages}`, 195, 9, { align: 'right' })
 
   doc.setDrawColor(...GOLD)
@@ -49,7 +62,21 @@ function justify(doc, text, x, y, maxWidth, lineHeight = 5.5) {
   return y + (lines.length * lineHeight)
 }
 
-export function generarContratoPDF(datos) {
+async function loadImageAsBase64(url) {
+  try {
+    const response = await fetch(url)
+    const blob = await response.blob()
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onloadend = () => resolve(reader.result)
+      reader.readAsDataURL(blob)
+    })
+  } catch(e) {
+    return null
+  }
+}
+
+export async function generarContratoPDF(datos) {
   const {
     jugador, // { nombre, rut, domicilio, comuna, fechaNac }
     esMenor,
@@ -62,6 +89,10 @@ export function generarContratoPDF(datos) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const W = 180 // text width
   const X = 15  // left margin
+  
+  // Try to load logo
+  const logoUrl = datos.logoUrl || null
+  const logoData = logoUrl ? await loadImageAsBase64(logoUrl) : null
 
   // Textos helper
   const age = (fechaNac) => {
@@ -179,7 +210,7 @@ export function generarContratoPDF(datos) {
   const lines = doc.splitTextToSize(compareciente, W)
   lines.forEach(line => {
     if (y > 270) {
-      addHeader(doc, page, 99)
+      addHeader(doc, page, 99, logoData)
       doc.addPage()
       page++
       y = 20
@@ -192,7 +223,7 @@ export function generarContratoPDF(datos) {
   // Articles
   for (const art of articulos) {
     if (y > 265) {
-      addHeader(doc, page, 99)
+      addHeader(doc, page, 99, logoData)
       doc.addPage()
       page++
       y = 20
@@ -215,7 +246,7 @@ export function generarContratoPDF(datos) {
       const plines = doc.splitTextToSize(para, W)
       plines.forEach(pl => {
         if (y > 270) {
-          addHeader(doc, page, 99)
+          addHeader(doc, page, 99, logoData)
           doc.addPage()
           page++
           y = 20
@@ -228,7 +259,7 @@ export function generarContratoPDF(datos) {
   }
 
   // Signatures page
-  addHeader(doc, page, 99)
+  addHeader(doc, page, 99, logoData)
   doc.addPage()
   page++
   y = 30
@@ -285,11 +316,31 @@ export function generarContratoPDF(datos) {
     }
   })
 
-  // Fix page numbers
-  const totalPgs = page
+  // Fix page numbers — now we know the real total
+  const totalPgs = doc.getNumberOfPages()
   for (let i = 1; i <= totalPgs; i++) {
     doc.setPage(i)
-    addHeader(doc, i, totalPgs)
+    // Clear old footer area and rewrite with correct page count
+    doc.setFillColor(255, 255, 255)
+    doc.rect(0, 280, 210, 20, 'F')
+    
+    doc.setDrawColor(...GOLD)
+    doc.setLineWidth(0.8)
+    doc.line(15, 283, 195, 283)
+    doc.setFontSize(7)
+    doc.setTextColor(...GRAY)
+    doc.text('Nueva Fútbol Chile SpA · RUT 77.971.556-6 · Av. Larraín 5682, Piso 13, La Reina, Santiago · Agente FIFA Lic. 202406-7288', 105, 287, { align: 'center' })
+    
+    // Fix header page number
+    doc.setFillColor(255, 255, 255)
+    doc.rect(0, 0, 210, 15, 'F')
+    doc.setDrawColor(...GOLD)
+    doc.line(15, 12, 195, 12)
+    doc.setFontSize(7)
+    doc.setTextColor(...GRAY)
+    doc.setFont('helvetica', 'normal')
+    doc.text('CONTRATO DE REPRESENTACIÓN Y PRESTACIÓN DE SERVICIOS — NUEVA FÚTBOL CHILE SpA', 15, 9)
+    doc.text(`Página ${i} de ${totalPgs}`, 195, 9, { align: 'right' })
   }
 
   return doc

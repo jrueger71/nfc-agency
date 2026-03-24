@@ -81,7 +81,7 @@ export default function Documentos() {
         if (contratoForm.tutor1Nombre) tutores.push({ nombre: contratoForm.tutor1Nombre, rut: contratoForm.tutor1Rut })
         if (contratoForm.dosTutores && contratoForm.tutor2Nombre) tutores.push({ nombre: contratoForm.tutor2Nombre, rut: contratoForm.tutor2Rut })
       }
-      const doc = generarContratoPDF({
+      const doc = await generarContratoPDF({
         jugador: {
           nombre: player.name,
           rut: player.rut,
@@ -94,6 +94,7 @@ export default function Documentos() {
         fechaContrato: contratoForm.fechaContrato,
         duracionAnios: contratoForm.duracionAnios,
         ciudad: contratoForm.ciudad,
+        logoUrl: 'https://qgjdphqmwgrkwfbxbyhc.supabase.co/storage/v1/object/public/player-media/logo_nfc.JPG',
       })
       const nombre = player.name.replace(/\s+/g,'_')
       doc.save(`Contrato_NFC_${nombre}_${new Date().getFullYear()}.pdf`)
