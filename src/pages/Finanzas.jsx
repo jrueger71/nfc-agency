@@ -23,9 +23,12 @@ const INCOME_CATS = [
 ]
 
 const EXPENSE_CATS = [
+  // Implementación deportiva — PRINCIPAL
+  'Implementación Deportiva (Zapatos)',
+  'Implementación Deportiva (Guantes)',
+  'Implementación Deportiva (Equipamiento)',
   // Inversión jugador (Anexo A)
   'Apoyo económico directo',
-  'Calzado deportivo',
   'Vestuario / Indumentaria',
   'Accesorios deportivos',
   'Alimentación',
@@ -44,7 +47,7 @@ const EXPENSE_CATS = [
 function fmt$(n, moneda) {
   if (!n && n !== 0) return '—'
   const v = parseFloat(n)
-  const sym = moneda === 'USD' ? 'USD ' : '$ '
+  const sym = moneda === 'USD' ? 'USD ' : '$ CLP '
   if (Math.abs(v) >= 1000000) return sym + (v / 1000000).toFixed(2) + 'M'
   if (Math.abs(v) >= 1000) return sym + Math.round(v).toLocaleString('es-CL')
   return sym + v.toFixed(0)

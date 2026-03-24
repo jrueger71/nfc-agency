@@ -22,8 +22,30 @@ const LABEL = {
   fontWeight: 600,
 }
 
-const INCOME_TYPES = ['Comisión transferencia', 'Comisión renovación', 'Comisión marketing', 'Bono representación', 'Otro ingreso']
-const EXPENSE_TYPES = ['Viajes', 'Honorarios legales', 'Marketing / publicidad', 'Médico / preparación física', 'Gestión de imagen', 'Gastos administrativos', 'Otro gasto']
+const INCOME_TYPES = [
+  'Comisión Sueldo',
+  'Comisión Traspaso',
+  'Comisión Imagen / Marketing',
+  'Comisión Otros',
+]
+const EXPENSE_TYPES = [
+  'Implementación Deportiva (Zapatos)',
+  'Implementación Deportiva (Guantes)',
+  'Implementación Deportiva (Equipamiento)',
+  'Apoyo económico directo',
+  'Vestuario / Indumentaria',
+  'Accesorios deportivos',
+  'Alimentación',
+  'Gimnasio / Preparación física',
+  'Arriendo / Alojamiento',
+  'Traslados / Transporte',
+  'Gestión legal',
+  'Gestión comercial (Auspicio en especie)',
+  'Pérdida patrimonial',
+  'Gastos administrativos',
+  'Mantención',
+  'Otros',
+]
 
 export default function TransactionForm({ transaction, onSave, onCancel }) {
   const isEdit = !!transaction?.id
