@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard'
 import PlayersAdmin from './pages/PlayersAdmin'
 import Finanzas from './pages/Finanzas'
 import Noticias from './pages/Noticias'
+import Documentos from './pages/Documentos'
 
 export const AuthContext = createContext(null)
 export const useAuth = () => useContext(AuthContext)
@@ -67,6 +68,7 @@ export default function App() {
         <Route path="/finanzas" element={<ProtectedRoute allowedRoles={['admin','digitador']}><Finanzas /></ProtectedRoute>} />
         <Route path="/admin/jugadores" element={<ProtectedRoute allowedRoles={['admin']}><PlayersAdmin /></ProtectedRoute>} />
         <Route path="/admin/noticias" element={<ProtectedRoute allowedRoles={['admin']}><Noticias /></ProtectedRoute>} />
+        <Route path="/admin/documentos/:playerId" element={<ProtectedRoute allowedRoles={['admin']}><Documentos /></ProtectedRoute>} />
       </Routes>
     </AuthContext.Provider>
   )

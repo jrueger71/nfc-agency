@@ -434,4 +434,3 @@ export default function Finanzas() {
     </div>
   )
 }
-// v2

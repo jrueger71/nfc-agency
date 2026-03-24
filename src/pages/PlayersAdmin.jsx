@@ -129,6 +129,10 @@ export default function PlayersAdmin() {
                           <button style={EDIT_BTN} onClick={() => setModal({ type: 'player', data: p })}>Editar</button>
                           <button style={GHOST_BTN} onClick={() => setModal({ type: 'club', data: ci.id ? ci : null, playerId: p.id })}>Club</button>
                           <button style={GHOST_BTN} onClick={() => setModal({ type: 'agency', data: null, playerId: p.id })}>Agencia</button>
+                          <button onClick={() => navigate(`/admin/documentos/${p.id}`)}
+                            style={{fontSize:10,padding:'3px 8px',borderRadius:3,border:'1px solid rgba(201,168,76,0.4)',background:'rgba(201,168,76,0.1)',color:'#C9A84C',cursor:'pointer',fontFamily:'inherit'}}>
+                            📄 Docs
+                          </button>
                         </div>
                       </td>
                     </tr>
