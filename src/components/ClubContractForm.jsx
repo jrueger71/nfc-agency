@@ -114,7 +114,11 @@ export default function ClubContractForm({ contract, playerId, onSave, onCancel 
           <label style={LABEL}>VALOR TRANSFERMARKT</label>
           <input style={INPUT} value={form.transfermarkt_valuation || ''} onChange={e => set('transfermarkt_valuation', e.target.value)} placeholder="500K €" />
         </div>
-        <div style={{ gridColumn: '1/-1' }}>
+        <div>
+          <label style={LABEL}>VALORIZACIÓN TRANSFERMARKT</label>
+          <input style={INPUT} value={form.transfermarkt_valuation || ''} onChange={e => set('transfermarkt_valuation', e.target.value)} placeholder="500K €, 1M €, etc." />
+        </div>
+        <div>
           <label style={LABEL}>LINK PERFIL TRANSFERMARKT</label>
           <input style={INPUT} value={form.transfermarkt_profile || ''} onChange={e => set('transfermarkt_profile', e.target.value)} placeholder="https://www.transfermarkt.com/..." />
         </div>
