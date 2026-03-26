@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import ImageCropper from '../components/ImageCropper'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 
@@ -52,6 +53,7 @@ export default function Noticias({ publicView = false }) {
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
+  const [showCropper, setShowCropper] = useState(false)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const photoRef = useRef()
   const [deleteConfirm, setDeleteConfirm] = useState(null)
@@ -206,11 +208,27 @@ export default function Noticias({ publicView = false }) {
             </div>
             <div>
               <label style={LABEL}>FOTO</label>
-              <input ref={photoRef} type="file" accept="image/*" style={{display:'none'}} onChange={e=>uploadPhoto(e.target.files[0])}/>
-              <button type="button" onClick={()=>photoRef.current?.click()} disabled={uploadingPhoto}
-                style={{...INPUT,textAlign:'center',cursor:'pointer',color:form.imagen_url?'#4ade80':GOLD,borderStyle:'dashed'}}>
-                {uploadingPhoto?'Subiendo...':form.imagen_url?'✓ Foto cargada':'+ Subir foto'}
-              </button>
+              {form.imagen_url ? (
+                <div style={{display:'flex',alignItems:'center',gap:8,background:'rgba(74,222,128,0.08)',border:'1px solid rgba(74,222,128,0.25)',borderRadius:5,padding:'8px 12px'}}>
+                  <img src={form.imagen_url} style={{width:48,height:32,objectFit:'cover',borderRadius:3}} alt="preview"/>
+                  <span style={{fontSize:12,color:'#4ade80',flex:1}}>✓ Foto cargada</span>
+                  <button type="button" onClick={()=>setF('imagen_url','')} style={{fontSize:10,color:'#f87171',background:'none',border:'none',cursor:'pointer',fontFamily:'inherit'}}>Eliminar</button>
+                </div>
+              ) : showCropper ? (
+                <ImageCropper
+                  shape="rect"
+                  aspectRatio={16/9}
+                  storagePath={`noticias/noticia_${Date.now()}.jpg`}
+                  label="Seleccionar foto para la noticia"
+                  onSave={(url) => { setF('imagen_url', url); setShowCropper(false) }}
+                  onCancel={() => setShowCropper(false)}
+                />
+              ) : (
+                <button type="button" onClick={()=>setShowCropper(true)}
+                  style={{...INPUT,textAlign:'center',cursor:'pointer',color:GOLD,borderStyle:'dashed'}}>
+                  ✂️ Subir y recortar foto
+                </button>
+              )}
             </div>
             <div>
               <label style={LABEL}>VIDEO (Vimeo o YouTube)</label>

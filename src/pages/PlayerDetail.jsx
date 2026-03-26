@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import ImageCropper from '../components/ImageCropper'
 import { useAuth } from '../App'
 
 function fmt$(n) {
@@ -58,6 +59,7 @@ export default function PlayerDetail() {
   const [videoMsg, setVideoMsg] = useState('')
   const [uploadMsg, setUploadMsg] = useState('')
   const [uploading, setUploading] = useState(false)
+  const [showCropper, setShowCropper] = useState(false)
   const [lightbox, setLightbox] = useState(null)
   const profilePhotoRef = useRef()
   const extraPhotoRef = useRef()
@@ -73,6 +75,19 @@ export default function PlayerDetail() {
   }
 
   useEffect(() => { load() }, [id])
+
+  // Handle cropped profile photo save
+  const handleCropSave = async (publicUrl) => {
+    await supabase.from('players').update({ foto_url: publicUrl }).eq('id', id)
+    const existing = media.find(m => m.media_type === 'photo' && m.display_order === 1)
+    if (existing) {
+      await supabase.from('player_media').update({ url: publicUrl }).eq('id', existing.id)
+    } else {
+      await supabase.from('player_media').insert({ player_id: id, media_type: 'photo', url: publicUrl, display_order: 1 })
+    }
+    setShowCropper(false)
+    load()
+  }
 
   // Upload photo to Supabase Storage
   const uploadPhoto = async (file, isProfile = false) => {
@@ -348,14 +363,25 @@ export default function PlayerDetail() {
             {/* Profile photo */}
             <div>
               <div style={{ fontSize:13, color:'rgba(255,255,255,0.6)', fontWeight:600, marginBottom:10 }}>📷 Foto de perfil</div>
-              <input ref={profilePhotoRef} type="file" accept="image/*" style={{ display:'none' }}
-                onChange={e => uploadPhoto(e.target.files[0], true)} />
-              <button onClick={() => profilePhotoRef.current?.click()} disabled={uploading}
-                style={{ width:'100%', background:'rgba(201,168,76,0.08)', border:'1px dashed rgba(201,168,76,0.35)',
-                  borderRadius:6, padding:14, fontSize:14, color:GOLD, cursor:'pointer', fontFamily:'inherit' }}>
-                {uploading ? 'Subiendo...' : '+ Cambiar foto de perfil'}
-              </button>
-              <div style={{ fontSize:11, color:'rgba(255,255,255,0.25)', marginTop:4 }}>JPG, PNG — máx 5MB</div>
+              {showCropper ? (
+                <ImageCropper
+                  shape="circle"
+                  aspectRatio={1}
+                  storagePath={`${id}/profile.jpg`}
+                  label="Seleccionar foto de perfil"
+                  onSave={handleCropSave}
+                  onCancel={() => setShowCropper(false)}
+                />
+              ) : (
+                <>
+                  <button onClick={() => setShowCropper(true)}
+                    style={{ width:'100%', background:'rgba(201,168,76,0.08)', border:'1px dashed rgba(201,168,76,0.35)',
+                      borderRadius:6, padding:14, fontSize:14, color:GOLD, cursor:'pointer', fontFamily:'inherit' }}>
+                    ✂️ Subir y recortar foto de perfil
+                  </button>
+                  <div style={{ fontSize:11, color:'rgba(255,255,255,0.25)', marginTop:4 }}>JPG, PNG — se recorta en círculo automáticamente</div>
+                </>
+              )}
             </div>
 
             {/* Gallery photos */}
