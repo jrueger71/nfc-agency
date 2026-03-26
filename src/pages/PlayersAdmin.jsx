@@ -81,7 +81,7 @@ export default function PlayersAdmin() {
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <div style={{ maxHeight: '90vh', overflowY: 'auto', width: '100%', maxWidth: 660 }}>
             {modal.type === 'player' && <PlayerForm player={modal.data} onSave={closeModal} onCancel={closeModal} />}
-            {modal.type === 'club' && <ClubContractForm contract={modal.data} playerId={modal.playerId} onSave={closeModal} onCancel={closeModal} />}
+            {modal.type === 'club' && <ClubContractForm contract={modal.data} playerId={modal.playerId} playerName={modal.playerName} onSave={closeModal} onCancel={closeModal} />}
             {modal.type === 'agency' && <AgencyContractForm contract={modal.data} playerId={modal.playerId} playerName={modal.playerName} onSave={closeModal} onCancel={closeModal} />}
             {modal.type === 'transaction' && <TransactionForm transaction={modal.data} onSave={closeModal} onCancel={closeModal} />}
           </div>

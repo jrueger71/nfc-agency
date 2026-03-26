@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
 const INPUT = {
@@ -29,13 +29,58 @@ export default function ClubContractForm({ contract, playerId, onSave, onCancel 
     contract_date: '', contract_duration_months: '',
     salary: '', commission_percentage: '', commission_fixed: '',
     transfermarkt_profile: '', transfermarkt_valuation: '',
+    contract_pdf_url: '',
     ...contract,
     player_id: playerId || contract?.player_id,
   })
   const [loading, setLoading] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [msg, setMsg] = useState('')
+  const fileRef = useRef()
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  const getPdfName = (url) => {
+    if (!url) return null
+    const parts = url.split('/')
+    return decodeURIComponent(parts[parts.length - 1])
+  }
+
+  const handleUploadPdf = async (file) => {
+    if (!file) return
+    if (file.type !== 'application/pdf') { setMsg('Solo se permiten archivos PDF'); return }
+    setUploading(true); setMsg('')
+    const year = new Date().getFullYear()
+    const safeClub = (form.club_name || 'Club').replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'')
+    const safeName = (form.playerName || 'Jugador').replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'')
+    const fileName = `contratos/Contrato_Club_${safeClub}_${safeName}_${year}.pdf`
+    const { data: existing } = await supabase.storage.from('player-media').list('contratos', { search: `Contrato_Club_${safeClub}_${safeName}_${year}` })
+    if (existing && existing.length > 0) {
+      const { data: { publicUrl } } = supabase.storage.from('player-media').getPublicUrl(fileName)
+      set('contract_pdf_url', publicUrl)
+      setUploading(false)
+      setMsg('⚠ Ya existe un contrato — se usó el archivo existente')
+      setTimeout(() => setMsg(''), 4000)
+      return
+    }
+    const { error } = await supabase.storage.from('player-media').upload(fileName, file, { upsert: false })
+    if (error) { setUploading(false); setMsg('Error: ' + error.message); return }
+    const { data: { publicUrl } } = supabase.storage.from('player-media').getPublicUrl(fileName)
+    set('contract_pdf_url', publicUrl)
+    setUploading(false)
+    setMsg('✓ PDF subido correctamente')
+    setTimeout(() => setMsg(''), 3000)
+  }
+
+  const handleRemovePdf = async () => {
+    if (!window.confirm('¿Eliminar el PDF de este contrato?')) return
+    const url = form.contract_pdf_url
+    if (url) {
+      const path = url.split('/player-media/')[1]
+      if (path) await supabase.storage.from('player-media').remove([path])
+    }
+    set('contract_pdf_url', '')
+  }
 
   const handleSave = async () => {
     if (!form.club_name) { setMsg('El nombre del club es requerido'); return }
@@ -54,6 +99,7 @@ export default function ClubContractForm({ contract, playerId, onSave, onCancel 
       commission_fixed: form.commission_fixed ? parseFloat(form.commission_fixed) : null,
       transfermarkt_profile: form.transfermarkt_profile || null,
       transfermarkt_valuation: form.transfermarkt_valuation || null,
+      contract_pdf_url: form.contract_pdf_url || null,
     }
 
     let error
@@ -110,14 +156,35 @@ export default function ClubContractForm({ contract, playerId, onSave, onCancel 
           <label style={LABEL}>COMISIÓN FIJA (USD)</label>
           <input style={INPUT} type="number" value={form.commission_fixed || ''} onChange={e => set('commission_fixed', e.target.value)} placeholder="0" />
         </div>
+        <div style={{ gridColumn: '1/-1' }}>
+          <label style={LABEL}>CONTRATO PDF DIGITALIZADO</label>
+          <input ref={fileRef} type="file" accept=".pdf" style={{ display:'none' }} onChange={e => handleUploadPdf(e.target.files[0])} />
+          {form.contract_pdf_url ? (
+            <div style={{ background:'rgba(74,222,128,0.08)', border:'1px solid rgba(74,222,128,0.25)', borderRadius:6, padding:'10px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                <span style={{ fontSize:18 }}>📄</span>
+                <div>
+                  <div style={{ fontSize:12, color:'#4ade80', fontWeight:600 }}>{getPdfName(form.contract_pdf_url)}</div>
+                  <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)' }}>PDF subido · listo para usar</div>
+                </div>
+              </div>
+              <div style={{ display:'flex', gap:8 }}>
+                <a href={form.contract_pdf_url} target="_blank" rel="noreferrer" style={{ fontSize:11, color:'#C9A84C', background:'rgba(201,168,76,0.1)', border:'1px solid rgba(201,168,76,0.3)', borderRadius:4, padding:'4px 10px', textDecoration:'none' }}>Ver PDF</a>
+                <button onClick={handleRemovePdf} style={{ fontSize:11, color:'#f87171', background:'rgba(248,113,113,0.08)', border:'1px solid rgba(248,113,113,0.2)', borderRadius:4, padding:'4px 10px', cursor:'pointer', fontFamily:'inherit' }}>Eliminar</button>
+              </div>
+            </div>
+          ) : (
+            <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
+              style={{ ...INPUT, textAlign:'center', cursor: uploading ? 'wait' : 'pointer', borderStyle:'dashed', color: uploading ? 'rgba(255,255,255,0.3)' : '#C9A84C', background:'rgba(201,168,76,0.05)' }}>
+              {uploading ? '⏳ Subiendo PDF...' : '📎 Seleccionar PDF del contrato con club'}
+            </button>
+          )}
+        </div>
         <div>
           <label style={LABEL}>VALOR TRANSFERMARKT</label>
           <input style={INPUT} value={form.transfermarkt_valuation || ''} onChange={e => set('transfermarkt_valuation', e.target.value)} placeholder="500K €" />
         </div>
-        <div>
-          <label style={LABEL}>VALORIZACIÓN TRANSFERMARKT</label>
-          <input style={INPUT} value={form.transfermarkt_valuation || ''} onChange={e => set('transfermarkt_valuation', e.target.value)} placeholder="500K €, 1M €, etc." />
-        </div>
+
         <div>
           <label style={LABEL}>LINK PERFIL TRANSFERMARKT</label>
           <input style={INPUT} value={form.transfermarkt_profile || ''} onChange={e => set('transfermarkt_profile', e.target.value)} placeholder="https://www.transfermarkt.com/..." />
@@ -130,7 +197,7 @@ export default function ClubContractForm({ contract, playerId, onSave, onCancel 
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginTop: 20, alignItems: 'center' }}>
-        <button className="btn-gold" onClick={handleSave} disabled={loading}>
+        <button className="btn-gold" onClick={handleSave} disabled={loading || uploading}>
           {loading ? 'GUARDANDO...' : 'GUARDAR CONTRATO'}
         </button>
         <button className="btn-ghost" onClick={onCancel}>CANCELAR</button>
