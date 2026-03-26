@@ -222,10 +222,10 @@ export default function Landing() {
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))', gap:12 }}>
             {filtered.map((p,i) => (
               <div key={p.id} onClick={() => navigate(`/jugador/${p.id}`)}
-                style={{ background:'#0f1a3a', border:'1px solid rgba(201,168,76,0.12)', borderRadius:10, padding:'18px 12px', textAlign:'center', cursor:'pointer', transition:'all .25s' }}
+                style={{ background:'#0f1a3a', border:'1px solid rgba(201,168,76,0.12)', borderRadius:10, padding:'22px 16px', textAlign:'center', cursor:'pointer', transition:'all .25s' }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor=GOLD; e.currentTarget.style.transform='translateY(-3px)' }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor='rgba(201,168,76,0.12)'; e.currentTarget.style.transform='translateY(0)' }}>
-                <div style={{ width:72, height:72, borderRadius:'50%', margin:'0 auto 14px', background:AVATAR_COLORS[i%AVATAR_COLORS.length], display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'Bebas Neue', fontSize:20, color:'#fff', border:'2px solid rgba(201,168,76,0.2)', overflow:'hidden' }}>
+                <div style={{ width:110, height:110, borderRadius:'50%', margin:'0 auto 14px', background:AVATAR_COLORS[i%AVATAR_COLORS.length], display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'Bebas Neue', fontSize:28, color:'#fff', border:'2px solid rgba(201,168,76,0.2)', overflow:'hidden' }}>
                   {p.foto_url ? <img src={p.foto_url} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>e.target.style.display='none'} /> : initials(p.name)}
                 </div>
                 <div style={{ fontSize:13, fontWeight:600, color:'#fff', marginBottom:4, lineHeight:1.3 }}>{p.name}</div>
