@@ -270,15 +270,15 @@ export default function PlayerDetail() {
         ))}
       </div>
 
-      {/* Contract info */}
+      {/* Public info — club + transfermarkt */}
       <div className="grid-2" style={{ marginBottom:16 }}>
         <div className="card">
-          <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', fontWeight:600, letterSpacing:1.5, marginBottom:14 }}>CONTRATO CLUB</div>
+          <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', fontWeight:600, letterSpacing:1.5, marginBottom:14 }}>INFORMACIÓN DEPORTIVA</div>
           {[
-            ['Club', player.club_name || '—'],
-            ['Salario', fmt$(player.salary)],
-            ['Inicio', fmtDate(player.agency_contract_date)],
-            ['Duración', player.agency_contract_duration ? player.agency_contract_duration+' meses' : '—'],
+            ['Club actual', player.club_name || '—'],
+            ['Posición', player.position || '—'],
+            ['Edad', age(player.birth_date) !== '—' ? age(player.birth_date) + ' años' : '—'],
+            ['Nacionalidad', player.nationality || 'Chileno/a'],
           ].map(([l,v]) => (
             <div key={l} style={{ display:'flex', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid rgba(255,255,255,0.04)', fontSize:14 }}>
               <span style={{ color:'rgba(255,255,255,0.35)' }}>{l}</span>
@@ -287,18 +287,32 @@ export default function PlayerDetail() {
           ))}
         </div>
         <div className="card">
-          <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', fontWeight:600, letterSpacing:1.5, marginBottom:14 }}>CONTRATO AGENCIA</div>
-          {[
-            ['Incorporación', fmtDate(player.incorporation_date)],
-            ['Inicio', fmtDate(player.agency_contract_date)],
-            ['Comisión %', player.commission_percentage ? player.commission_percentage+'%' : '—'],
-            ['Comisión fija', fmt$(player.commission_fixed)],
-          ].map(([l,v]) => (
-            <div key={l} style={{ display:'flex', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid rgba(255,255,255,0.04)', fontSize:14 }}>
-              <span style={{ color:'rgba(255,255,255,0.35)' }}>{l}</span>
-              <span style={{ color:'rgba(255,255,255,0.8)', fontWeight:500 }}>{v}</span>
+          <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', fontWeight:600, letterSpacing:1.5, marginBottom:14 }}>TRANSFERMARKT</div>
+          {player.transfermarkt_valuation && (
+            <div style={{ textAlign:'center', padding:'12px 0', borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
+              <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', marginBottom:4 }}>VALORIZACIÓN DE MERCADO</div>
+              <div style={{ fontFamily:'Bebas Neue', fontSize:28, color:GOLD }}>{player.transfermarkt_valuation}</div>
             </div>
-          ))}
+          )}
+          {player.transfermarkt_profile ? (
+            <a href={player.transfermarkt_profile} target="_blank" rel="noreferrer"
+              style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginTop:14, padding:'10px', background:'rgba(201,168,76,0.08)', border:'1px solid rgba(201,168,76,0.25)', borderRadius:6, color:GOLD, textDecoration:'none', fontSize:13, fontWeight:600 }}>
+              🔗 Ver perfil en Transfermarkt
+            </a>
+          ) : (
+            <div style={{ textAlign:'center', padding:'14px 0', color:'rgba(255,255,255,0.2)', fontSize:13 }}>
+              Sin perfil Transfermarkt
+            </div>
+          )}
+          <div style={{ marginTop:10, display:'flex', alignItems:'center', gap:8 }}>
+            <div style={{ flex:1, height:1, background:'rgba(255,255,255,0.05)' }}/>
+            <span style={{ fontSize:10, color:'rgba(255,255,255,0.2)', letterSpacing:1 }}>REPRESENTADO POR</span>
+            <div style={{ flex:1, height:1, background:'rgba(255,255,255,0.05)' }}/>
+          </div>
+          <div style={{ textAlign:'center', marginTop:8 }}>
+            <div style={{ fontFamily:'Bebas Neue', fontSize:13, color:GOLD, letterSpacing:1 }}>NUEVA FÚTBOL CHILE SpA</div>
+            <div style={{ fontSize:10, color:'rgba(255,255,255,0.3)' }}>Agente FIFA · Lic. 202406-7288</div>
+          </div>
         </div>
       </div>
 
