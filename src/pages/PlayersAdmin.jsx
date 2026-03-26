@@ -82,7 +82,7 @@ export default function PlayersAdmin() {
           <div style={{ maxHeight: '90vh', overflowY: 'auto', width: '100%', maxWidth: 660 }}>
             {modal.type === 'player' && <PlayerForm player={modal.data} onSave={closeModal} onCancel={closeModal} />}
             {modal.type === 'club' && <ClubContractForm contract={modal.data} playerId={modal.playerId} onSave={closeModal} onCancel={closeModal} />}
-            {modal.type === 'agency' && <AgencyContractForm contract={modal.data} playerId={modal.playerId} onSave={closeModal} onCancel={closeModal} />}
+            {modal.type === 'agency' && <AgencyContractForm contract={modal.data} playerId={modal.playerId} playerName={modal.playerName} onSave={closeModal} onCancel={closeModal} />}
             {modal.type === 'transaction' && <TransactionForm transaction={modal.data} onSave={closeModal} onCancel={closeModal} />}
           </div>
         </div>
@@ -134,7 +134,7 @@ export default function PlayersAdmin() {
                         <div style={{ display: 'flex', gap: 4 }}>
                           <button style={EDIT_BTN} onClick={() => setModal({ type: 'player', data: p })}>Editar</button>
                           <button style={GHOST_BTN} onClick={() => setModal({ type: 'club', data: ci.id ? ci : null, playerId: p.id })}>Club</button>
-                          <button style={GHOST_BTN} onClick={() => setModal({ type: 'agency', data: null, playerId: p.id })}>Agencia</button>
+                          <button style={GHOST_BTN} onClick={() => setModal({ type: 'agency', data: null, playerId: p.id, playerName: p.name })}>Agencia</button>
                           <button onClick={() => navigate(`/admin/documentos/${p.id}`)}
                             style={{fontSize:10,padding:'3px 8px',borderRadius:3,border:'1px solid rgba(201,168,76,0.4)',background:'rgba(201,168,76,0.1)',color:'#C9A84C',cursor:'pointer',fontFamily:'inherit'}}>
                             📄 Docs
@@ -198,7 +198,7 @@ export default function PlayersAdmin() {
                       <td>{c.contract_duration_months ? c.contract_duration_months + ' meses' : '—'}</td>
                       <td>{c.contract_pdf_url ? <a href={c.contract_pdf_url} target="_blank" rel="noreferrer" style={{ color: '#C9A84C', fontSize: 10 }}>Ver PDF</a> : '—'}</td>
                       <td><span className={`pill ${pc}`}>{es}</span></td>
-                      <td><button style={EDIT_BTN} onClick={() => setModal({ type: 'agency', data: c, playerId: c.player_id })}>Editar</button></td>
+                      <td><button style={EDIT_BTN} onClick={() => setModal({ type: 'agency', data: c, playerId: c.player_id, playerName: players.find(x=>x.id===c.player_id)?.name })}>Editar</button></td>
                     </tr>
                   )
                 })}
