@@ -78,7 +78,13 @@ export default function PlayerDetail() {
 
   // Handle cropped profile photo save
   const handleCropSave = async (publicUrl) => {
-    await supabase.from('players').update({ foto_url: publicUrl }).eq('id', id)
+    console.log('Saving foto_url:', publicUrl, 'for player id:', id)
+    const { error } = await supabase.from('players').update({ foto_url: publicUrl }).eq('id', id)
+    if (error) {
+      console.error('Error updating foto_url:', error)
+      alert('Error guardando foto: ' + error.message)
+      return
+    }
     const existing = media.find(m => m.media_type === 'photo' && m.display_order === 1)
     if (existing) {
       await supabase.from('player_media').update({ url: publicUrl }).eq('id', existing.id)
