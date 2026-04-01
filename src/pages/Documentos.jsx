@@ -41,6 +41,7 @@ export default function Documentos() {
     tutor1Nombre: '', tutor1Rut: '',
     tutor2Nombre: '', tutor2Rut: '',
     dosTutores: false,
+    tieneDerechosImagen: false,
   })
   const setC = (k,v) => setContratoForm(f=>({...f,[k]:v}))
 
@@ -94,6 +95,7 @@ export default function Documentos() {
         fechaContrato: contratoForm.fechaContrato,
         duracionAnios: contratoForm.duracionAnios,
         ciudad: contratoForm.ciudad,
+        tieneDerechosImagen: contratoForm.tieneDerechosImagen,
         logoUrl: 'https://qgjdphqmwgrkwfbxbyhc.supabase.co/storage/v1/object/public/player-media/logo_nfc.JPG',
       })
       const nombre = player.name.replace(/\s+/g,'_')
@@ -206,6 +208,24 @@ export default function Documentos() {
                 </select>
               </div>
 
+              {/* Derechos de imagen */}
+              <div style={{background:'rgba(201,168,76,0.06)',border:'1px solid rgba(201,168,76,0.2)',borderRadius:6,padding:14}}>
+                <div style={{display:'flex',alignItems:'flex-start',gap:10}}>
+                  <input type="checkbox" id="derechosImagen" checked={contratoForm.tieneDerechosImagen}
+                    onChange={e=>setC('tieneDerechosImagen',e.target.checked)}
+                    style={{width:16,height:16,accentColor:GOLD,cursor:'pointer',marginTop:2,flexShrink:0}}/>
+                  <div>
+                    <label htmlFor="derechosImagen" style={{...LABEL,margin:0,cursor:'pointer',fontSize:12,color:GOLD}}>
+                      Jugador con contratos de imagen / auspicios activos
+                    </label>
+                    <div style={{fontSize:10,color:'rgba(255,255,255,0.35)',marginTop:4,lineHeight:1.5}}>
+                      Activa el <strong style={{color:'rgba(255,255,255,0.5)'}}>Artículo 11</strong> — compensación fija USD 150.000 a todo evento.<br/>
+                      <span style={{color:'rgba(255,255,255,0.25)'}}>Excluye el Artículo 10 (Anexo A) para materias de imagen y auspicios.</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {menor && (
                 <div style={{background:'rgba(251,191,36,0.08)',border:'1px solid rgba(251,191,36,0.25)',borderRadius:6,padding:14}}>
                   <div style={{fontSize:11,color:'#fbbf24',fontWeight:600,marginBottom:12}}>DATOS DEL TUTOR / REPRESENTANTE LEGAL</div>
@@ -249,6 +269,7 @@ export default function Documentos() {
               <div><span style={{color:'rgba(255,255,255,0.35)'}}>Fecha contrato:</span> {contratoForm.fechaContrato}</div>
               <div><span style={{color:'rgba(255,255,255,0.35)'}}>Duración:</span> {contratoForm.duracionAnios} año{contratoForm.duracionAnios>1?'s':''}</div>
               <div><span style={{color:'rgba(255,255,255,0.35)'}}>Firmantes:</span> {menor ? `Jugador + ${1+(contratoForm.dosTutores?1:0)} tutor(es) + Agencia` : 'Jugador + Agencia'}</div>
+              <div><span style={{color:'rgba(255,255,255,0.35)'}}>Cláusula imagen:</span> {contratoForm.tieneDerechosImagen ? <span style={{color:GOLD}}>Art. 11 — USD 150.000 fijo</span> : <span style={{color:'rgba(255,255,255,0.3)'}}>Art. 10 — Anexo A</span>}</div>
             </div>
             <div style={{background:'rgba(255,255,255,0.03)',borderRadius:6,padding:12,fontSize:11,color:'rgba(255,255,255,0.3)',marginBottom:20,lineHeight:1.6}}>
               El PDF incluirá todos los artículos del contrato estándar NFC (Arts. I al XIII) con los datos del jugador precargados. La sección de firmas se adaptará automáticamente según sea menor de edad o no.
