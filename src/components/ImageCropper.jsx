@@ -120,6 +120,8 @@ export default function ImageCropper({
     const ctx = canvas.getContext('2d')
     ctx.clearRect(0, 0, outputSize, outputH)
 
+    // Only clip to circle in the canvas output if shape is circle
+    // For player profiles shown in grid, CSS handles the circle — save as square
     if (shape === 'circle') {
       ctx.beginPath()
       ctx.arc(outputSize/2, outputH/2, outputSize/2, 0, Math.PI*2)
@@ -136,16 +138,19 @@ export default function ImageCropper({
       outputSize, outputH
     )
 
+    const mimeType = shape === 'circle' ? 'image/png' : 'image/jpeg'
+    const quality = shape === 'circle' ? undefined : 0.92
     canvas.toBlob(async (blob) => {
       if (!blob) { setMsg('Error generando imagen'); setUploading(false); return }
+      const contentType = shape === 'circle' ? 'image/png' : 'image/jpeg'
       const { error } = await supabase.storage
         .from('player-media')
-        .upload(storagePath, blob, { upsert: true, contentType: 'image/jpeg' })
+        .upload(storagePath, blob, { upsert: true, contentType })
       if (error) { setMsg('Error: ' + error.message); setUploading(false); return }
       const { data: { publicUrl } } = supabase.storage.from('player-media').getPublicUrl(storagePath)
       setUploading(false)
       onSave?.(publicUrl)
-    }, 'image/jpeg', 0.92)
+    }, mimeType, quality)
   }
 
   return (

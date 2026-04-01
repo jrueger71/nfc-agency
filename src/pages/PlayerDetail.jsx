@@ -385,8 +385,8 @@ export default function PlayerDetail() {
               <div style={{ fontSize:13, color:'rgba(255,255,255,0.6)', fontWeight:600, marginBottom:10 }}>📷 Foto de perfil</div>
               {showCropper ? (
                 <ImageCropper
-                  shape="circle"
-                  aspectRatio={1}
+                  shape="rect"
+                  aspectRatio={3/4}
                   storagePath={`${id}/profile.jpg`}
                   label="Seleccionar foto de perfil"
                   onSave={handleCropSave}
@@ -397,9 +397,9 @@ export default function PlayerDetail() {
                   <button onClick={() => setShowCropper(true)}
                     style={{ width:'100%', background:'rgba(201,168,76,0.08)', border:'1px dashed rgba(201,168,76,0.35)',
                       borderRadius:6, padding:14, fontSize:14, color:GOLD, cursor:'pointer', fontFamily:'inherit' }}>
-                    ✂️ Subir y recortar foto de perfil
+                    ✂️ Subir foto de perfil (3/4)
                   </button>
-                  <div style={{ fontSize:11, color:'rgba(255,255,255,0.25)', marginTop:4 }}>JPG, PNG — se recorta en círculo automáticamente</div>
+                  <div style={{ fontSize:11, color:'rgba(255,255,255,0.25)', marginTop:4 }}>JPG, PNG — formato 3/4 — ideal para foto de cuerpo completo</div>
                 </>
               )}
             </div>
