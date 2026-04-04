@@ -106,6 +106,30 @@ export default function Documentos() {
     setGenerating(false)
   }
 
+  const handleGenerarContratoTipo = async () => {
+    setGenerating(true)
+    try {
+      const doc = await generarContratoPDF({
+        jugador: {
+          nombre: 'NOMBRE DEL JUGADOR',
+          rut: 'XX.XXX.XXX-X',
+          domicilio: 'Santiago',
+          comuna: 'Santiago',
+          fechaNac: null,
+        },
+        esMenor: false,
+        tutores: [],
+        fechaContrato: new Date().toLocaleDateString('es-CL', {day:'numeric',month:'long',year:'numeric'}),
+        duracionAnios: 2,
+        ciudad: 'Santiago',
+        tieneDerechosImagen: false,
+        logoUrl: 'https://qgjdphqmwgrkwfbxbyhc.supabase.co/storage/v1/object/public/player-media/logo_nfc.JPG',
+      })
+      doc.save(`Contrato_Tipo_NFC_${new Date().getFullYear()}.pdf`)
+    } catch(e) { console.error(e) }
+    setGenerating(false)
+  }
+
   const handleGenerarAnexo = async () => {
     if (!player) return
     setGenerating(true)
@@ -160,9 +184,15 @@ export default function Documentos() {
 
   return (
     <div className="page">
-      <button onClick={() => navigate('/admin/jugadores')} style={{fontSize:13,color:GOLD,background:'none',border:'none',cursor:'pointer',fontWeight:600,letterSpacing:.5,marginBottom:16,fontFamily:'inherit',padding:0}}>
-        ← VOLVER AL PLANTEL
-      </button>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+        <button onClick={() => navigate('/admin/jugadores')} style={{fontSize:13,color:GOLD,background:'none',border:'none',cursor:'pointer',fontWeight:600,letterSpacing:.5,fontFamily:'inherit',padding:0}}>
+          ← VOLVER AL PLANTEL
+        </button>
+        <button onClick={handleGenerarContratoTipo} disabled={generating}
+          style={{fontSize:12,padding:'7px 16px',background:'rgba(201,168,76,0.1)',border:'1px solid rgba(201,168,76,0.3)',borderRadius:5,color:GOLD,cursor:'pointer',fontFamily:'Bebas Neue',letterSpacing:1}}>
+          📄 CONTRATO TIPO
+        </button>
+      </div>
 
       {/* Player header */}
       <div className="card" style={{marginBottom:20,display:'flex',gap:16,alignItems:'center'}}>
