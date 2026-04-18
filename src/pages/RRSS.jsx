@@ -14,13 +14,26 @@ const TMPLS=[
   {id:'renewal',label:'Renovación',icon:'🔄',tag:'RENOVACIÓN DE CONTRATO',msg:'¡Seguimos construyendo juntos!'},
 ]
 
+function genderMsg(msg, gender) {
+  if (gender === 'F') {
+    return msg
+      .replace('Bienvenido', 'Bienvenida')
+      .replace('representado', 'representada')
+      .replace('REPRESENTADO', 'REPRESENTADA')
+  }
+  return msg
+    .replace('Bienvenida', 'Bienvenido')
+    .replace('representada', 'representado')
+    .replace('REPRESENTADA', 'REPRESENTADO')
+}
+
 export default function RRSS() {
   const [players, setPlayers] = useState([])
   const [tmpl, setTmpl] = useState(TMPLS[0])
   const [fmt, setFmt] = useState('sq')
   const [photoObj, setPhotoObj] = useState(null)
   const [photoPreview, setPhotoPreview] = useState(null)
-  const [st, setSt] = useState({name:'NOMBRE JUGADOR',club:'Club',msg:'¡Bienvenido a la familia!'})
+  const [st, setSt] = useState({name:'NOMBRE JUGADOR',club:'Club',msg:'¡Bienvenido a la familia!',gender:'M'})
   const canvasRef = useRef()
   const fileRef = useRef()
 
@@ -37,7 +50,7 @@ export default function RRSS() {
   }, [])
 
   const loadPlayer = async (player) => {
-    setSt(s=>({...s, name:player.name.toUpperCase(), club:player.club_name||''}))
+    setSt(s=>({...s, name:player.name.toUpperCase(), club:player.club_name||'', gender:player.gender||'M'}))
     setPhotoObj(null); setPhotoPreview(null)
     if (player.foto_url) {
       const img = new Image()
@@ -120,7 +133,7 @@ export default function RRSS() {
 
     // Tag pill
     const tagSize=w*0.026;ctx.font=`700 ${tagSize}px sans-serif`
-    const tagTxt=tmpl.tag,tagW=ctx.measureText(tagTxt).width+w*0.06,tagH=tagSize*1.9
+    const tagTxt=genderMsg(tmpl.tag,st.gender),tagW=ctx.measureText(tagTxt).width+w*0.06,tagH=tagSize*1.9
     ctx.fillStyle=GOLD;ctx.beginPath();ctx.roundRect((w-tagW)/2,blockY,tagW,tagH,tagH/2);ctx.fill()
     ctx.fillStyle=NAVY;ctx.textAlign='center';ctx.fillText(tagTxt,w/2,blockY+tagH*0.7)
 
@@ -142,21 +155,21 @@ export default function RRSS() {
     nameLines.forEach((l,i)=>ctx.fillText(l,w/2,nameY+i*adaptSize*1.05))
     const afterName=nameY+nameLines.length*adaptSize*1.05
 
-    // Club — tighter to name
+    // Club — bigger, tighter to name
     if(st.club){
-      ctx.font=`400 ${w*0.028}px sans-serif`;ctx.fillStyle='rgba(255,255,255,0.45)';ctx.textAlign='center'
-      ctx.fillText(st.club,w/2,afterName+w*0.006)
+      ctx.font=`500 ${w*0.038}px sans-serif`;ctx.fillStyle='rgba(255,255,255,0.6)';ctx.textAlign='center'
+      ctx.fillText(st.club,w/2,afterName+w*0.01)
     }
 
-    // Footer
+    // Footer — bigger
     ctx.strokeStyle=GOLD;ctx.lineWidth=2;ctx.globalAlpha=0.45
-    ctx.beginPath();ctx.moveTo(w*0.08,h-w*0.095);ctx.lineTo(w*0.92,h-w*0.095);ctx.stroke()
+    ctx.beginPath();ctx.moveTo(w*0.08,h-w*0.11);ctx.lineTo(w*0.92,h-w*0.11);ctx.stroke()
     ctx.globalAlpha=1;ctx.textAlign='center'
-    ctx.font=`700 ${w*0.032}px sans-serif`;ctx.fillStyle=GOLD
-    ctx.fillText('NUEVA FÚTBOL CHILE SpA',w/2,h-w*0.058)
-    ctx.font=`400 ${w*0.02}px sans-serif`;ctx.fillStyle='rgba(255,255,255,0.4)'
-    ctx.fillText('Agencia de Representación · Agente FIFA Lic. 202406-7288',w/2,h-w*0.034)
-    ctx.fillText('@nuevafutbolspa · nuevafutbolspa.com',w/2,h-w*0.013)
+    ctx.font=`700 ${w*0.038}px sans-serif`;ctx.fillStyle=GOLD
+    ctx.fillText('NUEVA FÚTBOL CHILE SpA',w/2,h-w*0.07)
+    ctx.font=`400 ${w*0.026}px sans-serif`;ctx.fillStyle='rgba(255,255,255,0.45)'
+    ctx.fillText('Agencia de Representación · Agente FIFA Lic. 202406-7288',w/2,h-w*0.042)
+    ctx.fillText('@nuevafutbolspa · nuevafutbolspa.com',w/2,h-w*0.018)
   }, [photoObj, tmpl, fmt, st])
 
   useEffect(() => { draw() }, [draw])
@@ -181,7 +194,7 @@ export default function RRSS() {
             <div style={{fontSize:11,color:'rgba(255,255,255,0.35)',fontWeight:600,letterSpacing:1.5,marginBottom:10}}>PLANTILLA</div>
             <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:5}}>
               {TMPLS.map(t=>(
-                <button key={t.id} onClick={()=>{setTmpl(t);setSt(s=>({...s,msg:t.msg}))}}
+                <button key={t.id} onClick={()=>{setTmpl(t);setSt(s=>({...s,msg:genderMsg(t.msg,s.gender)}))}}
                   style={{padding:'6px 4px',fontSize:10,borderRadius:5,border:`1px solid ${tmpl.id===t.id?GOLD_C:'rgba(255,255,255,0.1)'}`,background:tmpl.id===t.id?'rgba(201,168,76,0.15)':'transparent',color:tmpl.id===t.id?GOLD_C:'rgba(255,255,255,0.4)',cursor:'pointer',fontFamily:'inherit',textAlign:'center',lineHeight:1.5}}>
                   {t.icon}<br/>{t.label}
                 </button>
@@ -201,6 +214,17 @@ export default function RRSS() {
             <div style={{marginBottom:8}}>
               <label style={LABEL}>NOMBRE</label>
               <input style={INPUT} value={st.name} onChange={e=>setSt(s=>({...s,name:e.target.value.toUpperCase()}))}/>
+            </div>
+            <div style={{marginBottom:8}}>
+              <label style={LABEL}>GÉNERO</label>
+              <div style={{display:'flex',gap:6}}>
+                {[['M','Masculino'],['F','Femenino']].map(([val,lbl])=>(
+                  <button key={val} onClick={()=>setSt(s=>({...s,gender:val,msg:genderMsg(tmpl.msg,val)}))}
+                    style={{flex:1,padding:'6px',fontSize:12,borderRadius:5,border:`1px solid ${st.gender===val?GOLD_C:'rgba(255,255,255,0.1)'}`,background:st.gender===val?'rgba(201,168,76,0.15)':'transparent',color:st.gender===val?GOLD_C:'rgba(255,255,255,0.4)',cursor:'pointer',fontFamily:'inherit'}}>
+                    {lbl}
+                  </button>
+                ))}
+              </div>
             </div>
             <div style={{marginBottom:8}}>
               <label style={LABEL}>CLUB</label>
