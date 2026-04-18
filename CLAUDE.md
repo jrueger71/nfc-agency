@@ -13,9 +13,9 @@ Desarrollado en React + Vite, conectado a Supabase como backend.
 - **Gráficos:** Recharts
 
 ## Credenciales Supabase
-- **URL:** https://qgjdphqmwgrkwfbxbyhc.supabase.co
-- **Anon key:** eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFnamRwaHFtd2dya3dmYnhieWhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NTYzOTYsImV4cCI6MjA4NzUzMjM5Nn0.IIK7YBV8BKdkSEFPi4LrYRV7WBC_nZdEl-UtYIO65ps
-- **Usuario admin:** jc.rueger@gmail.com
+- Ver archivo .env (no subido a GitHub)
+- URL proyecto: qgjdphqmwgrkwfbxbyhc.supabase.co
+- Usuario admin: jc.rueger@gmail.com
 
 ## Identidad visual
 - **Colores:** Azul marino #1B2B5E + Dorado #C9A84C

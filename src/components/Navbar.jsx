@@ -18,6 +18,7 @@ export default function Navbar() {
     { label:'Finanzas', path:'/finanzas', show:!!session && (userRole==='admin'||userRole==='digitador') },
     { label:'Plantel Admin', path:'/admin/jugadores', show:!!session && userRole==='admin' },
     { label:'Noticias', path:'/admin/noticias', show:!!session && userRole==='admin' },
+    { label:'RRSS', path:'/admin/rrss', show:!!session && userRole==='admin' },
   ]
 
   const go = (path) => { navigate(path); setMenuOpen(false) }
