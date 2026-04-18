@@ -107,9 +107,9 @@ export default function RRSS() {
       ctx.fillStyle='rgba(27,43,94,0.2)';ctx.fillText('NFC',w/2,h*0.52)
     }
 
-    // Text block
+    // Text block — anchored lower, near footer
     const isStory=fmt==='st'
-    const blockY=photoObj?(isStory?h*0.56:h*0.63):h*0.36
+    const blockY=photoObj?(isStory?h*0.63:h*0.67):h*0.38
 
     const wrapLines=(text,maxW,font)=>{
       ctx.font=font
@@ -142,10 +142,10 @@ export default function RRSS() {
     nameLines.forEach((l,i)=>ctx.fillText(l,w/2,nameY+i*adaptSize*1.05))
     const afterName=nameY+nameLines.length*adaptSize*1.05
 
-    // Club
+    // Club — tighter to name
     if(st.club){
       ctx.font=`400 ${w*0.028}px sans-serif`;ctx.fillStyle='rgba(255,255,255,0.45)';ctx.textAlign='center'
-      ctx.fillText(st.club,w/2,afterName+w*0.012)
+      ctx.fillText(st.club,w/2,afterName+w*0.006)
     }
 
     // Footer
