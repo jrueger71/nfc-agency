@@ -132,13 +132,15 @@ export default function RRSS() {
     msgLines.forEach((l,i)=>ctx.fillText(l,w/2,msgY+i*msgSize*1.2))
     const afterMsg=msgY+msgLines.length*msgSize*1.2
 
-    // Player name
-    const nameSize=isStory?w*0.098:w*0.086
-    const nameLines=wrapLines(st.name,w*0.88,`900 ${nameSize}px sans-serif`)
-    ctx.font=`900 ${nameSize}px sans-serif`;ctx.fillStyle=GOLD;ctx.textAlign='center'
-    const nameY=afterMsg+nameSize*0.35
-    nameLines.forEach((l,i)=>ctx.fillText(l,w/2,nameY+i*nameSize*1.05))
-    const afterName=nameY+nameLines.length*nameSize*1.05
+    // Player name — adaptive size based on name length
+    const baseNameSize=isStory?w*0.082:w*0.072
+    const nameLen=st.name.length
+    const adaptSize = nameLen>20 ? baseNameSize*0.78 : nameLen>14 ? baseNameSize*0.88 : baseNameSize
+    const nameLines=wrapLines(st.name,w*0.88,`900 ${adaptSize}px sans-serif`)
+    ctx.font=`900 ${adaptSize}px sans-serif`;ctx.fillStyle=GOLD;ctx.textAlign='center'
+    const nameY=afterMsg+adaptSize*0.35
+    nameLines.forEach((l,i)=>ctx.fillText(l,w/2,nameY+i*adaptSize*1.05))
+    const afterName=nameY+nameLines.length*adaptSize*1.05
 
     // Club
     if(st.club){
