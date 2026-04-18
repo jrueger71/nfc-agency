@@ -25,8 +25,15 @@ export default function RRSS() {
   const fileRef = useRef()
 
   useEffect(() => {
-    supabase.from('players_full_info').select('id,name,club_name,foto_url').order('name')
-      .then(({data})=>setPlayers(data||[]))
+    supabase.from('players').select('id,name,foto_url').order('name')
+      .then(async ({data:pl}) => {
+        if (!pl) return
+        // Get club names
+        const {data:ci} = await supabase.from('club_info').select('player_id,club_name').eq('contract_active',true)
+        const clubMap = {}
+        if (ci) ci.forEach(c => { clubMap[c.player_id] = c.club_name })
+        setPlayers(pl.map(p => ({...p, club_name: clubMap[p.id]||''})))
+      })
   }, [])
 
   const loadPlayer = async (player) => {
