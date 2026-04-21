@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { generarAutorizacionPDF } from '../lib/generarAutorizacion'
+import { generarAutorizacionPDF, generarPoderEspecialPDF } from '../lib/generarAutorizacion'
 
 const GOLD = '#C9A84C'
 const INPUT = {
@@ -58,8 +58,12 @@ export default function DocsEspeciales() {
   )
 
   const addJugador = (player) => {
-    setJugadoresSeleccionados(prev => [...prev, { id: player.id, nombre: player.name, rut: player.rut || '' }])
+    setJugadoresSeleccionados(prev => [...prev, { id: player.id, nombre: player.name, rut: player.rut || '', clubActual: '' }])
     setPlayerSearch('')
+  }
+
+  const updateJugadorClub = (id, club) => {
+    setJugadoresSeleccionados(prev => prev.map(j => j.id === id ? {...j, clubActual: club} : j))
   }
 
   const removeJugador = (id) => {
@@ -72,36 +76,48 @@ export default function DocsEspeciales() {
     setClubes(prev => prev.map((c, idx) => idx === i ? { ...c, [field]: value } : c))
   }
 
-  const handleGenerar = async () => {
-    if (!agenteNombre) { setMsg('Ingresa el nombre del agente externo'); return }
-    if (!agenteLicencia) { setMsg('Ingresa la licencia FIFA del agente externo'); return }
-    if (jugadoresSeleccionados.length === 0) { setMsg('Agrega al menos un jugador'); return }
-    if (!fechaTermino) { setMsg('Ingresa la fecha de término'); return }
+  const buildDatos = () => ({
+    ciudad,
+    fecha: fmtDateLong(fechaDoc),
+    agenteExterno: { nombre: agenteNombre, licencia: agenteLicencia },
+    jugadores: jugadoresSeleccionados,
+    clubes: clubes.filter(c => c.nombre),
+    incluyeComision,
+    comisionNFC: parseInt(comisionNFC),
+    comisionExterno: parseInt(comisionExterno),
+    fechaInicio: fmtDateLong(fechaInicio),
+    fechaTermino: fmtDateLong(fechaTermino),
+  })
 
-    setGenerating(true)
-    setMsg('')
+  const validate = () => {
+    if (!agenteNombre) { setMsg('Ingresa el nombre del agente externo'); return false }
+    if (!agenteLicencia) { setMsg('Ingresa la licencia FIFA del agente externo'); return false }
+    if (jugadoresSeleccionados.length === 0) { setMsg('Agrega al menos un jugador'); return false }
+    if (!fechaTermino) { setMsg('Ingresa la fecha de término'); return false }
+    return true
+  }
 
+  const handleGenerarPoder = async () => {
+    if (!validate()) return
+    setGenerating(true); setMsg('')
     try {
-      const doc = generarAutorizacionPDF({
-        ciudad,
-        fecha: fmtDateLong(fechaDoc),
-        agenteExterno: { nombre: agenteNombre, licencia: agenteLicencia },
-        jugadores: jugadoresSeleccionados,
-        clubes: clubes.filter(c => c.nombre),
-        incluyeComision,
-        comisionNFC: parseInt(comisionNFC),
-        comisionExterno: parseInt(comisionExterno),
-        fechaInicio: fmtDateLong(fechaInicio),
-        fechaTermino: fmtDateLong(fechaTermino),
-      })
+      const doc = generarPoderEspecialPDF(buildDatos())
+      const safeName = agenteNombre.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'')
+      doc.save(`PoderEspecial_NFC_${safeName}_${fechaDoc}.pdf`)
+      setMsg('✓ Poder Especial generado correctamente')
+    } catch(e) { setMsg('Error: ' + e.message) }
+    setGenerating(false)
+  }
 
-      const safeName = agenteNombre.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '')
+  const handleGenerar = async () => {
+    if (!validate()) return
+    setGenerating(true); setMsg('')
+    try {
+      const doc = generarAutorizacionPDF(buildDatos())
+      const safeName = agenteNombre.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'')
       doc.save(`Autorizacion_NFC_${safeName}_${fechaDoc}.pdf`)
-      setMsg('✓ PDF generado correctamente')
-    } catch (e) {
-      setMsg('Error generando PDF: ' + e.message)
-    }
-
+      setMsg('✓ Autorización generada correctamente')
+    } catch(e) { setMsg('Error: ' + e.message) }
     setGenerating(false)
   }
 
@@ -111,9 +127,15 @@ export default function DocsEspeciales() {
         <div className="bebas" style={{ fontSize: 18, letterSpacing: 2, color: GOLD }}>
           AUTORIZACIÓN EXCLUSIVA DE GESTIÓN
         </div>
-        <button className="btn-gold" onClick={handleGenerar} disabled={generating}>
-          {generating ? 'GENERANDO...' : '📄 GENERAR PDF'}
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn-gold" onClick={handleGenerar} disabled={generating}>
+            {generating ? 'GENERANDO...' : '📄 AUTORIZACIÓN EXCLUSIVA'}
+          </button>
+          <button className="btn-ghost" onClick={handleGenerarPoder} disabled={generating}
+            style={{ fontSize: 13, padding: '8px 16px' }}>
+            {generating ? 'GENERANDO...' : '📄 PODER ESPECIAL'}
+          </button>
+        </div>
       </div>
       {msg && (
         <div style={{ marginBottom: 16, fontSize: 13, color: msg.startsWith('✓') ? '#4ade80' : '#f87171' }}>
@@ -154,9 +176,12 @@ export default function DocsEspeciales() {
               <div style={{ marginBottom: 10 }}>
                 {jugadoresSeleccionados.map(j => (
                   <div key={j.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 5, marginBottom: 6 }}>
-                    <div>
+                    <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 13, color: '#fff', fontWeight: 600 }}>{j.nombre}</div>
                       {j.rut && <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>RUT: {j.rut}</div>}
+                      <input style={{ ...INPUT, marginTop: 4, fontSize: 11, padding: '4px 8px' }}
+                        value={j.clubActual} onChange={e => updateJugadorClub(j.id, e.target.value)}
+                        placeholder="Club actual (opcional — dejar vacío si libre)" />
                     </div>
                     <button onClick={() => removeJugador(j.id)}
                       style={{ fontSize: 11, color: '#f87171', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>

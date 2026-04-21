@@ -19,7 +19,8 @@ function genderMsg(msg, gender) {
     return msg
       .replace('Bienvenido', 'Bienvenida')
       .replace('representado', 'representada')
-      .replace('REPRESENTADO', 'REPRESENTADA')
+      .replace('REPRESENTADO', 'REPRESENTADA')  // ← después de esta línea
+      .replace('NUEVO REPRESENTADA', 'NUEVA REPRESENTADA')  // ← agregar aquí
   }
   return msg
     .replace('Bienvenida', 'Bienvenido')
