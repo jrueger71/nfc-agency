@@ -5,6 +5,7 @@ import PlayerForm from '../components/PlayerForm'
 import ClubContractForm from '../components/ClubContractForm'
 import AgencyContractForm from '../components/AgencyContractForm'
 import TransactionForm from '../components/TransactionForm'
+import DocsEspeciales from '../components/DocsEspeciales'
 
 function fmtDate(d) {
   if (!d) return '—'
@@ -102,11 +103,12 @@ export default function PlayersAdmin() {
       </div>
 
       {/* TABS */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
-        <button style={TAB(tab === 'players')} onClick={() => setTab('players')}>Plantel ({players.length})</button>
-        <button style={TAB(tab === 'contracts')} onClick={() => setTab('contracts')}>Contratos ({clubInfo.length + agencyContracts.length})</button>
-        <button style={TAB(tab === 'transactions')} onClick={() => setTab('transactions')}>Transacciones ({transactions.length})</button>
-      </div>
+<div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+  <button style={TAB(tab === 'players')} onClick={() => setTab('players')}>Plantel ({players.length})</button>
+  <button style={TAB(tab === 'contracts')} onClick={() => setTab('contracts')}>Contratos ({clubInfo.length + agencyContracts.length})</button>
+  <button style={TAB(tab === 'transactions')} onClick={() => setTab('transactions')}>Transacciones ({transactions.length})</button>
+  <button style={TAB(tab === 'docs')} onClick={() => setTab('docs')}>Docs Especiales</button>
+</div>
 
       {/* PLANTEL */}
       {tab === 'players' && (
@@ -233,6 +235,9 @@ export default function PlayersAdmin() {
           </table>
         </div>
       )}
+
+      {/* DOCS ESPECIALES */}
+      {tab === 'docs' && <DocsEspeciales />}
     </div>
   )
 }
