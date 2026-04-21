@@ -122,7 +122,11 @@ export function generarAutorizacionPDF(datos) {
   y += 5
 
   // Art. 1
-  const jugadoresStr = jugadores.map(j => `${j.nombre.toUpperCase()}${j.rut ? `, RUT: ${j.rut}` : ''}`).join('; ')
+  const jugadoresStr = jugadores.map(j => {
+    let str = `${j.nombre.toUpperCase()}${j.rut ? `, RUT: ${j.rut}` : ''}`
+    if (j.clubActual) str += `, actualmente con contrato en ${j.clubActual.toUpperCase()}`
+    return str
+  }).join('; ')
   const textoJ = jugadores.length === 1 ? `para el jugador ${jugadoresStr}` : `para los siguientes jugadores del pool de la Agencia: ${jugadoresStr}`
   y = drawArticulo(doc, 'PRIMERO', `Por medio del presente acuerdo, la Agencia autoriza de manera EXCLUSIVA al Agente Externo don ${agenteExterno.nombre.toUpperCase()} a participar en una base exploratoria y de negociación en un esfuerzo por determinar oportunidades de empleo y transferencia ${textoJ}.`, X, y, W, LINE_H, checkPage, addPageFn)
 

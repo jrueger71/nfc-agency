@@ -16,12 +16,15 @@ const LABEL = {
 
 function fmtDateLong(dateStr) {
   if (!dateStr) return ''
-  return new Date(dateStr).toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' })
+  // Parse as local date to avoid UTC offset shifting the day
+  const [y, m, d] = dateStr.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 export default function DocsEspeciales() {
   const [players, setPlayers] = useState([])
   const [generating, setGenerating] = useState(false)
+  const [clubMap, setClubMap] = useState({})
   const [msg, setMsg] = useState('')
 
   // Agente externo
@@ -48,8 +51,15 @@ export default function DocsEspeciales() {
   const [fechaTermino, setFechaTermino] = useState('')
 
   useEffect(() => {
-    supabase.from('players').select('id,name,rut').order('name')
-      .then(({ data }) => setPlayers(data || []))
+    Promise.all([
+      supabase.from('players').select('id,name,rut').order('name'),
+      supabase.from('club_info').select('player_id,club_name,contract_active'),
+    ]).then(([{data: pl}, {data: ci}]) => {
+      setPlayers(pl || [])
+      const map = {}
+      if (ci) ci.forEach(c => { if (c.contract_active) map[c.player_id] = c.club_name })
+      setClubMap(map)
+    })
   }, [])
 
   const filteredPlayers = players.filter(p =>
@@ -58,7 +68,7 @@ export default function DocsEspeciales() {
   )
 
   const addJugador = (player) => {
-    setJugadoresSeleccionados(prev => [...prev, { id: player.id, nombre: player.name, rut: player.rut || '', clubActual: '' }])
+    setJugadoresSeleccionados(prev => [...prev, { id: player.id, nombre: player.name, rut: player.rut || '', clubActual: clubMap[player.id] || '' }])
     setPlayerSearch('')
   }
 
