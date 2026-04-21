@@ -89,7 +89,7 @@ export function generarAutorizacionPDF(datos) {
   doc.text('AUTORIZACIÓN EXCLUSIVA DE GESTIÓN', 105, y, { align: 'center' })
   y += 7
   doc.setFontSize(10)
-  doc.setTextColor(...GOLD[0], ...GOLD.slice(1))
+  doc.setTextColor(GOLD[0], GOLD[1], GOLD[2])
   doc.setTextColor(GOLD[0], GOLD[1], GOLD[2])
   doc.text('CARTERA DE JUGADORES', 105, y, { align: 'center' })
   y += 12
@@ -127,7 +127,7 @@ export function generarAutorizacionPDF(datos) {
   y = drawJustified(doc, art1, X, y, W, LINE_H, checkPage, addPageFn)
   y += 4
 
-  // SEGUNDO — clubes
+  // SEGUNDO — clubes (opcional)
   if (checkPage(y)) { addPageFn(); y = 20 }
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(...NAVY)
@@ -135,15 +135,21 @@ export function generarAutorizacionPDF(datos) {
   y += LINE_H
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(...BLACK)
-  const art2intro = 'Esta autorización se limita estrictamente a las gestiones ante los siguientes clubes:'
-  y = drawJustified(doc, art2intro, X, y, W, LINE_H, checkPage, addPageFn)
-  y += 2
-  clubes.forEach((club, i) => {
-    if (checkPage(y)) { addPageFn(); y = 20 }
-    const linea = `${i + 1}.  ${club.nombre}${club.pais ? ` (${club.pais})` : ''}.`
-    doc.text(linea, X + 5, y)
-    y += LINE_H
-  })
+  const clubesFiltrados = (clubes || []).filter(c => c.nombre && c.nombre.trim())
+  if (clubesFiltrados.length > 0) {
+    const art2intro = 'Esta autorización se limita estrictamente a las gestiones ante los siguientes clubes y/o ligas:'
+    y = drawJustified(doc, art2intro, X, y, W, LINE_H, checkPage, addPageFn)
+    y += 2
+    clubesFiltrados.forEach((club, i) => {
+      if (checkPage(y)) { addPageFn(); y = 20 }
+      const linea = `${i + 1}.  ${club.nombre}${club.pais ? ` (${club.pais})` : ''}.`
+      doc.text(linea, X + 5, y)
+      y += LINE_H
+    })
+  } else {
+    const art2libre = 'Esta autorización no se limita a clubes específicos, pudiendo el Agente Externo realizar gestiones ante cualquier club o liga que estime conveniente para los intereses del Jugador.'
+    y = drawJustified(doc, art2libre, X, y, W, LINE_H, checkPage, addPageFn)
+  }
   y += 3
 
   // TERCERO — comisión

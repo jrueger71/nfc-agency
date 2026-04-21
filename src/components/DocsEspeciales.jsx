@@ -76,7 +76,6 @@ export default function DocsEspeciales() {
     if (!agenteNombre) { setMsg('Ingresa el nombre del agente externo'); return }
     if (!agenteLicencia) { setMsg('Ingresa la licencia FIFA del agente externo'); return }
     if (jugadoresSeleccionados.length === 0) { setMsg('Agrega al menos un jugador'); return }
-    if (clubes.some(c => !c.nombre)) { setMsg('Completa el nombre de todos los clubes'); return }
     if (!fechaTermino) { setMsg('Ingresa la fecha de término'); return }
 
     setGenerating(true)
@@ -231,7 +230,7 @@ export default function DocsEspeciales() {
           <div className="card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontWeight: 600, letterSpacing: 1.5 }}>
-                CLUBES AUTORIZADOS
+                CLUBES / LIGAS AUTORIZADOS (opcional)
               </div>
               <button onClick={addClub} className="btn-ghost" style={{ fontSize: 11, padding: '4px 10px' }}>
                 + Agregar club
@@ -243,7 +242,7 @@ export default function DocsEspeciales() {
                   {i === 0 && <label style={LABEL}>NOMBRE DEL CLUB</label>}
                   <input style={INPUT} value={club.nombre}
                     onChange={e => updateClub(i, 'nombre', e.target.value)}
-                    placeholder="Ej: RSC Anderlecht" />
+                    placeholder="Ej: RSC Anderlecht — dejar vacío si es libre" />
                 </div>
                 <div>
                   {i === 0 && <label style={LABEL}>PAÍS</label>}
