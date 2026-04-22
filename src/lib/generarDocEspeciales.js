@@ -56,8 +56,7 @@ function drawJustified(doc, text, x, y, maxWidth, lineH, checkPage, addPageFn) {
 
 // ─── 1. LISTADO DE JUGADORES ─────────────────────────────────────────────────
 export function generarListadoJugadoresPDF(datos) {
-  const { jugadores, fecha, ciudad = 'Santiago de Chile' } = datos
-  // jugadores: [{ nombre, rut, club, posicion, contractActive }]
+  const { jugadores, fecha, ciudad = 'Santiago de Chile', columnas = { rut:true, posicion:true, club:true, estado:true } } = datos
 
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   let page = 1
@@ -94,44 +93,48 @@ export function generarListadoJugadoresPDF(datos) {
   y += 8
 
   // Tabla
-  const tableData = jugadores.map((j, i) => [
-    i + 1,
-    j.nombre || '—',
-    j.rut || '—',
-    j.posicion || '—',
-    j.club || '—',
-    j.estado || (j.contractActive ? 'Activo' : 'Libre'),
-  ])
+  // Build dynamic columns
+  const colDefs = [{ key: 'n', label: 'N°', w: 10, align: 'center' }, { key: 'nombre', label: 'Nombre completo', w: null }]
+  if (columnas.rut) colDefs.push({ key: 'rut', label: 'RUT', w: 28 })
+  if (columnas.posicion) colDefs.push({ key: 'posicion', label: 'Posición', w: 24 })
+  if (columnas.club) colDefs.push({ key: 'club', label: 'Club actual', w: 40 })
+  if (columnas.estado) colDefs.push({ key: 'estado', label: 'Estado', w: 22, align: 'center' })
+
+  // Auto width for nombre
+  const fixedW = colDefs.filter(c=>c.w).reduce((s,c)=>s+c.w, 0)
+  const nombreCol = colDefs.find(c=>c.key==='nombre')
+  if (nombreCol) nombreCol.w = W - fixedW - 2
+
+  const head = [colDefs.map(c => c.label)]
+  const tableData = jugadores.map((j, i) => colDefs.map(c => {
+    if (c.key === 'n') return i + 1
+    if (c.key === 'nombre') return j.nombre || '—'
+    if (c.key === 'rut') return j.rut || '—'
+    if (c.key === 'posicion') return j.posicion || '—'
+    if (c.key === 'club') return j.club || '—'
+    if (c.key === 'estado') return j.estado || (j.contractActive ? 'Activo' : 'Libre')
+    return '—'
+  }))
+
+  const colStyles = {}
+  colDefs.forEach((c, i) => {
+    colStyles[i] = { cellWidth: c.w || 'auto' }
+    if (c.align) colStyles[i].halign = c.align
+  })
+
+  const estadoColIdx = colDefs.findIndex(c => c.key === 'estado')
 
   doc.autoTable({
     startY: y,
-    head: [['N°', 'Nombre completo', 'RUT', 'Posición', 'Club actual', 'Estado']],
+    head,
     body: tableData,
     theme: 'grid',
-    styles: {
-      fontSize: 8,
-      cellPadding: 3,
-      textColor: BLACK,
-      lineColor: [220, 220, 220],
-      lineWidth: 0.3,
-    },
-    headStyles: {
-      fillColor: NAVY,
-      textColor: [255, 255, 255],
-      fontStyle: 'bold',
-      fontSize: 8,
-    },
-    columnStyles: {
-      0: { cellWidth: 10, halign: 'center' },
-      1: { cellWidth: 58 },
-      2: { cellWidth: 28 },
-      3: { cellWidth: 24 },
-      4: { cellWidth: 40 },
-      5: { cellWidth: 22, halign: 'center' },
-    },
+    styles: { fontSize: 8, cellPadding: 3, textColor: BLACK, lineColor: [220, 220, 220], lineWidth: 0.3 },
+    headStyles: { fillColor: NAVY, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
+    columnStyles: colStyles,
     alternateRowStyles: { fillColor: LIGHT },
     didParseCell: (data) => {
-      if (data.column.index === 5 && data.section === 'body') {
+      if (estadoColIdx >= 0 && data.column.index === estadoColIdx && data.section === 'body') {
         const val = data.cell.raw
         if (val === 'Activo') data.cell.styles.textColor = [22, 163, 74]
         else if (val === 'Cadete') data.cell.styles.textColor = [201, 168, 76]

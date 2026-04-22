@@ -372,6 +372,8 @@ export function ListadoJugadores({ players, clubMap }) {
   const [seleccionados, setSeleccionados] = useState({})
   const [estadoOverride, setEstadoOverride] = useState({})
   const [initialized, setInitialized] = useState(false)
+  const [columnas, setColumnas] = useState({ rut:true, posicion:true, club:true, estado:true })
+  const toggleCol = (col) => setColumnas(prev => ({...prev, [col]:!prev[col]}))
 
   const GOLD_C = '#C9A84C'
   const INPUT = { width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(201,168,76,0.2)', borderRadius:6, padding:'9px 12px', fontSize:13, color:'#fff', fontFamily:'inherit', outline:'none' }
@@ -416,7 +418,7 @@ export function ListadoJugadores({ players, clubMap }) {
         contractActive: !!clubMap[p.id]?.contract_active,
         estado: estadoOverride[p.id] || p.estado || 'Activo',
       }))
-      const doc = generarListadoJugadoresPDF({ jugadores: jugadoresData, fecha: fmtDate(fecha), ciudad })
+      const doc = generarListadoJugadoresPDF({ jugadores: jugadoresData, fecha: fmtDate(fecha), ciudad, columnas })
       doc.save(`Nomina_Jugadores_NFC_${fecha}.pdf`)
       setMsg('✓ Nómina generada correctamente')
     } catch(e) { setMsg('Error: ' + e.message) }
@@ -455,6 +457,23 @@ export function ListadoJugadores({ players, clubMap }) {
             <div><span style={{color:'rgba(255,255,255,0.35)'}}>Con contrato activo:</span> {activos}</div>
             <div><span style={{color:'rgba(255,255,255,0.35)'}}>Sin contrato / libre:</span> {totalSel - activos}</div>
           </div>
+        </div>
+      </div>
+
+      {/* Selector de columnas */}
+      <div className="card" style={{marginBottom:12}}>
+        <div style={{fontSize:11,color:'rgba(255,255,255,0.35)',fontWeight:600,letterSpacing:1.5,marginBottom:10}}>COLUMNAS A INCLUIR EN EL PDF</div>
+        <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+          {[['rut','RUT'],['posicion','Posición'],['club','Club'],['estado','Estado']].map(([key,lbl])=>(
+            <label key={key} style={{display:'flex',alignItems:'center',gap:6,cursor:'pointer',fontSize:12,color:columnas[key]?GOLD_C:'rgba(255,255,255,0.4)'}}>
+              <input type="checkbox" checked={!!columnas[key]} onChange={()=>toggleCol(key)}
+                style={{width:14,height:14,accentColor:GOLD_C,cursor:'pointer'}}/>
+              {lbl}
+            </label>
+          ))}
+        </div>
+        <div style={{fontSize:10,color:'rgba(255,255,255,0.25)',marginTop:8}}>
+          La columna Nombre siempre se incluye. Desmarca las que no quieres mostrar en el PDF.
         </div>
       </div>
 
