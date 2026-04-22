@@ -25,6 +25,8 @@ export default function DocsEspeciales() {
   const [players, setPlayers] = useState([])
   const [generating, setGenerating] = useState(false)
   const [clubMap, setClubMap] = useState({})
+  const [subTab, setSubTab] = useState('autorizacion')
+  const [clubInfoMap, setClubInfoMap] = useState({})
   const [msg, setMsg] = useState('')
 
   // Agente externo
@@ -57,8 +59,10 @@ export default function DocsEspeciales() {
     ]).then(([{data: pl}, {data: ci}]) => {
       setPlayers(pl || [])
       const map = {}
-      if (ci) ci.forEach(c => { if (c.contract_active) map[c.player_id] = c.club_name })
+      const fullMap = {}
+      if (ci) ci.forEach(c => { if (c.contract_active) { map[c.player_id] = c.club_name; fullMap[c.player_id] = c } })
       setClubMap(map)
+      setClubInfoMap(fullMap)
     })
   }, [])
 
@@ -131,8 +135,27 @@ export default function DocsEspeciales() {
     setGenerating(false)
   }
 
+  const GOLD_C = '#C9A84C'
+  const TAB_STYLE = (active) => ({
+    padding: '7px 14px', fontSize: 11, fontWeight: 600, letterSpacing: .5,
+    borderRadius: 3, cursor: 'pointer', fontFamily: 'inherit',
+    background: active ? GOLD_C : 'transparent',
+    color: active ? '#0f1a3a' : 'rgba(255,255,255,0.45)',
+    border: active ? `1px solid ${GOLD_C}` : '1px solid rgba(201,168,76,0.2)',
+  })
+
   return (
     <div>
+      {/* Sub-tabs */}
+      <div style={{display:'flex',gap:6,marginBottom:20,flexWrap:'wrap'}}>
+        <button style={TAB_STYLE(subTab==='autorizacion')} onClick={()=>setSubTab('autorizacion')}>Autorización / Poder</button>
+        <button style={TAB_STYLE(subTab==='listado')} onClick={()=>setSubTab('listado')}>Nómina de Jugadores</button>
+        <button style={TAB_STYLE(subTab==='conflicto')} onClick={()=>setSubTab('conflicto')}>Declaración Conflicto</button>
+      </div>
+
+      {subTab === 'listado' && <ListadoJugadores players={players} clubMap={clubInfoMap} />}
+      {subTab === 'conflicto' && <DeclaracionConflicto />}
+      {subTab === 'autorizacion' && <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div className="bebas" style={{ fontSize: 18, letterSpacing: 2, color: GOLD }}>
           AUTORIZACIÓN EXCLUSIVA DE GESTIÓN
@@ -332,6 +355,240 @@ export default function DocsEspeciales() {
             </div>
           </div>
 
+        </div>
+      </div>
+    </div>}
+    </div>
+  )
+}
+
+// ─── SUBCOMPONENTES ───────────────────────────────────────────────────────────
+
+export function ListadoJugadores({ players, clubMap }) {
+  const [generating, setGenerating] = useState(false)
+  const [msg, setMsg] = useState('')
+  const [ciudad, setCiudad] = useState('Santiago de Chile')
+  const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0])
+  const [seleccionados, setSeleccionados] = useState({})
+  const [initialized, setInitialized] = useState(false)
+
+  const GOLD_C = '#C9A84C'
+  const INPUT = { width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(201,168,76,0.2)', borderRadius:6, padding:'9px 12px', fontSize:13, color:'#fff', fontFamily:'inherit', outline:'none' }
+  const LABEL = { fontSize:10, color:'rgba(255,255,255,0.45)', letterSpacing:1, display:'block', marginBottom:4, fontWeight:600 }
+
+  // Init: select all by default
+  useEffect(() => {
+    if (players.length > 0 && !initialized) {
+      const init = {}
+      players.forEach(p => { init[p.id] = true })
+      setSeleccionados(init)
+      setInitialized(true)
+    }
+  }, [players, initialized])
+
+  const toggleAll = (val) => {
+    const next = {}
+    players.forEach(p => { next[p.id] = val })
+    setSeleccionados(next)
+  }
+
+  const toggle = (id) => setSeleccionados(prev => ({ ...prev, [id]: !prev[id] }))
+
+  const fmtDate = (d) => {
+    if (!d) return ''
+    const [y,m,dd] = d.split('-').map(Number)
+    return new Date(y,m-1,dd).toLocaleDateString('es-CL',{day:'numeric',month:'long',year:'numeric'})
+  }
+
+  const jugadoresIncluidos = players.filter(p => seleccionados[p.id])
+
+  const handleGenerar = async () => {
+    if (jugadoresIncluidos.length === 0) { setMsg('Selecciona al menos un jugador'); return }
+    setGenerating(true); setMsg('')
+    try {
+      const { generarListadoJugadoresPDF } = await import('../lib/generarDocEspeciales')
+      const jugadoresData = jugadoresIncluidos.map(p => ({
+        nombre: p.name,
+        rut: p.rut || '',
+        posicion: clubMap[p.id]?.position || '',
+        club: clubMap[p.id]?.club_name || '',
+        contractActive: !!clubMap[p.id]?.contract_active,
+      }))
+      const doc = generarListadoJugadoresPDF({ jugadores: jugadoresData, fecha: fmtDate(fecha), ciudad })
+      doc.save(`Nomina_Jugadores_NFC_${fecha}.pdf`)
+      setMsg('✓ Nómina generada correctamente')
+    } catch(e) { setMsg('Error: ' + e.message) }
+    setGenerating(false)
+  }
+
+  const totalSel = jugadoresIncluidos.length
+  const activos = jugadoresIncluidos.filter(p => clubMap[p.id]?.contract_active).length
+
+  return (
+    <div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20,flexWrap:'wrap',gap:8}}>
+        <div className="bebas" style={{fontSize:18,letterSpacing:2,color:GOLD_C}}>NÓMINA DE JUGADORES</div>
+        <button className="btn-gold" onClick={handleGenerar} disabled={generating}>
+          {generating ? 'GENERANDO...' : `📄 GENERAR PDF (${totalSel} jugadores)`}
+        </button>
+      </div>
+      {msg && <div style={{marginBottom:16,fontSize:13,color:msg.startsWith('✓')?'#4ade80':'#f87171'}}>{msg}</div>}
+
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16}}>
+        <div className="card">
+          <div style={{fontSize:11,color:'rgba(255,255,255,0.35)',fontWeight:600,letterSpacing:1.5,marginBottom:14}}>DATOS DEL DOCUMENTO</div>
+          <div style={{marginBottom:10}}>
+            <label style={LABEL}>CIUDAD</label>
+            <input style={INPUT} value={ciudad} onChange={e=>setCiudad(e.target.value)}/>
+          </div>
+          <div>
+            <label style={LABEL}>FECHA DE EMISIÓN</label>
+            <input style={INPUT} type="date" value={fecha} onChange={e=>setFecha(e.target.value)}/>
+          </div>
+        </div>
+        <div className="card">
+          <div style={{fontSize:11,color:'rgba(255,255,255,0.35)',fontWeight:600,letterSpacing:1.5,marginBottom:14}}>RESUMEN</div>
+          <div style={{fontSize:13,color:'rgba(255,255,255,0.6)',lineHeight:2}}>
+            <div><span style={{color:'rgba(255,255,255,0.35)'}}>Seleccionados:</span> {totalSel} de {players.length}</div>
+            <div><span style={{color:'rgba(255,255,255,0.35)'}}>Con contrato activo:</span> {activos}</div>
+            <div><span style={{color:'rgba(255,255,255,0.35)'}}>Sin contrato / libre:</span> {totalSel - activos}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabla con checkboxes */}
+      <div className="card" style={{overflowX:'auto'}}>
+        <div style={{display:'flex',gap:8,marginBottom:10,alignItems:'center'}}>
+          <span style={{fontSize:11,color:'rgba(255,255,255,0.35)'}}>Seleccionar:</span>
+          <button onClick={()=>toggleAll(true)} style={{fontSize:11,padding:'3px 10px',borderRadius:4,border:'1px solid rgba(201,168,76,0.3)',background:'rgba(201,168,76,0.1)',color:GOLD_C,cursor:'pointer',fontFamily:'inherit'}}>Todos</button>
+          <button onClick={()=>toggleAll(false)} style={{fontSize:11,padding:'3px 10px',borderRadius:4,border:'1px solid rgba(255,255,255,0.1)',background:'transparent',color:'rgba(255,255,255,0.4)',cursor:'pointer',fontFamily:'inherit'}}>Ninguno</button>
+        </div>
+        <table>
+          <thead>
+            <tr><th style={{width:32}}>✓</th><th>Nombre</th><th>RUT</th><th>Posición</th><th>Club</th><th>Estado</th></tr>
+          </thead>
+          <tbody>
+            {players.map(p=>(
+              <tr key={p.id} style={{opacity:seleccionados[p.id]?1:0.35,cursor:'pointer'}} onClick={()=>toggle(p.id)}>
+                <td>
+                  <input type="checkbox" checked={!!seleccionados[p.id]} onChange={()=>toggle(p.id)}
+                    style={{width:15,height:15,accentColor:GOLD_C,cursor:'pointer'}}/>
+                </td>
+                <td style={{color:'#fff',fontWeight:500}}>{p.name}</td>
+                <td style={{fontFamily:'monospace',fontSize:11}}>{p.rut||'—'}</td>
+                <td>{clubMap[p.id]?.position||'—'}</td>
+                <td>{clubMap[p.id]?.club_name||'—'}</td>
+                <td><span className={`pill ${clubMap[p.id]?.contract_active?'pill-ok':'pill-off'}`}>{clubMap[p.id]?.contract_active?'ACTIVO':'LIBRE'}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+export function DeclaracionConflicto() {
+  const [generating, setGenerating] = useState(false)
+  const [msg, setMsg] = useState('')
+  const [ciudad, setCiudad] = useState('Santiago de Chile')
+  const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0])
+  const [exigidoPor, setExigidoPor] = useState('FIFA, AFUCH y ANFP')
+  const [declarAdicionales, setDeclarAdicionales] = useState('')
+
+  const GOLD_C = '#C9A84C'
+  const INPUT = { width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(201,168,76,0.2)', borderRadius:6, padding:'9px 12px', fontSize:13, color:'#fff', fontFamily:'inherit', outline:'none' }
+  const LABEL = { fontSize:10, color:'rgba(255,255,255,0.45)', letterSpacing:1, display:'block', marginBottom:4, fontWeight:600 }
+
+  const sugerencias = ['FIFA, AFUCH y ANFP', 'FIFA', 'AFUCH', 'ANFP', 'FIFA y AFUCH', 'FIFA y ANFP']
+
+  const fmtDate = (d) => {
+    if (!d) return ''
+    const [y,m,dd] = d.split('-').map(Number)
+    return new Date(y,m-1,dd).toLocaleDateString('es-CL',{day:'numeric',month:'long',year:'numeric'})
+  }
+
+  const handleGenerar = async () => {
+    setGenerating(true); setMsg('')
+    try {
+      const { generarDeclaracionConflictoPDF } = await import('../lib/generarDocEspeciales')
+      const declaraciones = declarAdicionales.trim()
+        ? declarAdicionales.split('\n').filter(l=>l.trim())
+        : []
+      const doc = generarDeclaracionConflictoPDF({
+        ciudad, fecha: fmtDate(fecha), exigidoPor,
+        declaraciones,
+      })
+      doc.save(`Declaracion_ConflictoInteres_NFC_${fecha}.pdf`)
+      setMsg('✓ Declaración generada correctamente')
+    } catch(e) { setMsg('Error: ' + e.message) }
+    setGenerating(false)
+  }
+
+  return (
+    <div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
+        <div className="bebas" style={{fontSize:18,letterSpacing:2,color:GOLD_C}}>DECLARACIÓN DE CONFLICTO DE INTERÉS</div>
+        <button className="btn-gold" onClick={handleGenerar} disabled={generating}>
+          {generating ? 'GENERANDO...' : '📄 GENERAR PDF'}
+        </button>
+      </div>
+      {msg && <div style={{marginBottom:16,fontSize:13,color:msg.startsWith('✓')?'#4ade80':'#f87171'}}>{msg}</div>}
+
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+        <div style={{display:'flex',flexDirection:'column',gap:14}}>
+          <div className="card">
+            <div style={{fontSize:11,color:'rgba(255,255,255,0.35)',fontWeight:600,letterSpacing:1.5,marginBottom:14}}>DATOS DEL DOCUMENTO</div>
+            <div style={{marginBottom:10}}>
+              <label style={LABEL}>CIUDAD</label>
+              <input style={INPUT} value={ciudad} onChange={e=>setCiudad(e.target.value)}/>
+            </div>
+            <div>
+              <label style={LABEL}>FECHA</label>
+              <input style={INPUT} type="date" value={fecha} onChange={e=>setFecha(e.target.value)}/>
+            </div>
+          </div>
+
+          <div className="card">
+            <div style={{fontSize:11,color:'rgba(255,255,255,0.35)',fontWeight:600,letterSpacing:1.5,marginBottom:14}}>EXIGIDA POR</div>
+            <div style={{display:'flex',flexWrap:'wrap',gap:5,marginBottom:10}}>
+              {sugerencias.map(s=>(
+                <button key={s} onClick={()=>setExigidoPor(s)}
+                  style={{padding:'4px 10px',fontSize:11,borderRadius:20,border:`1px solid ${exigidoPor===s?GOLD_C:'rgba(255,255,255,0.15)'}`,background:exigidoPor===s?'rgba(201,168,76,0.15)':'transparent',color:exigidoPor===s?GOLD_C:'rgba(255,255,255,0.45)',cursor:'pointer',fontFamily:'inherit'}}>
+                  {s}
+                </button>
+              ))}
+            </div>
+            <input style={INPUT} value={exigidoPor} onChange={e=>setExigidoPor(e.target.value)} placeholder="O escribe manualmente..."/>
+          </div>
+
+          <div className="card">
+            <div style={{fontSize:11,color:'rgba(255,255,255,0.35)',fontWeight:600,letterSpacing:1.5,marginBottom:6}}>DECLARACIONES ADICIONALES</div>
+            <div style={{fontSize:11,color:'rgba(255,255,255,0.3)',marginBottom:8}}>Opcional — una por línea. Se agregarán al final del documento.</div>
+            <textarea style={{...INPUT,resize:'vertical',minHeight:80}} value={declarAdicionales}
+              onChange={e=>setDeclarAdicionales(e.target.value)}
+              placeholder="Ej: Que no tengo relación con..."/>
+          </div>
+        </div>
+
+        {/* Vista previa del contenido */}
+        <div className="card" style={{background:'rgba(201,168,76,0.04)',border:'1px solid rgba(201,168,76,0.2)'}}>
+          <div style={{fontSize:11,color:GOLD_C,fontWeight:600,letterSpacing:1.5,marginBottom:14}}>CONTENIDO DEL DOCUMENTO</div>
+          <div style={{fontSize:11,color:'rgba(255,255,255,0.5)',lineHeight:1.9}}>
+            <div style={{color:'rgba(255,255,255,0.7)',fontWeight:600,marginBottom:6}}>Declarante: ALDO CAMILO MALDONADO REBOLLEDO</div>
+            <div style={{marginBottom:4}}>① Sin vínculos con clubes profesionales</div>
+            <div style={{marginBottom:4}}>② No es propietario ni directivo de clubes</div>
+            <div style={{marginBottom:4}}>③ Sin remuneraciones de clubes</div>
+            <div style={{marginBottom:4}}>④ Actúa en defensa exclusiva de sus jugadores</div>
+            <div style={{marginBottom:4}}>⑤ Se compromete a informar conflictos futuros</div>
+            <div style={{marginBottom:4}}>⑥ Datos verídicos bajo responsabilidad legal</div>
+            {declarAdicionales.trim() && declarAdicionales.split('\n').filter(l=>l.trim()).map((l,i)=>(
+              <div key={i} style={{marginBottom:4,color:'rgba(201,168,76,0.7)'}}>+{i+1} {l}</div>
+            ))}
+            <div style={{marginTop:10,paddingTop:10,borderTop:'1px solid rgba(255,255,255,0.08)',color:'rgba(255,255,255,0.3)',fontSize:10}}>
+              Incluye espacio para timbre de notaría (opcional)
+            </div>
+          </div>
         </div>
       </div>
     </div>
