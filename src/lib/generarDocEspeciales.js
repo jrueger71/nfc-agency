@@ -99,8 +99,8 @@ export function generarListadoJugadoresPDF(datos) {
     j.nombre || '—',
     j.rut || '—',
     j.posicion || '—',
-    j.club || 'Sin contrato activo',
-    j.contractActive ? 'Activo' : 'Libre',
+    j.club || '—',
+    j.estado || (j.contractActive ? 'Activo' : 'Libre'),
   ])
 
   doc.autoTable({
@@ -133,7 +133,9 @@ export function generarListadoJugadoresPDF(datos) {
     didParseCell: (data) => {
       if (data.column.index === 5 && data.section === 'body') {
         const val = data.cell.raw
-        data.cell.styles.textColor = val === 'Activo' ? [22, 163, 74] : [107, 114, 128]
+        if (val === 'Activo') data.cell.styles.textColor = [22, 163, 74]
+        else if (val === 'Cadete') data.cell.styles.textColor = [201, 168, 76]
+        else data.cell.styles.textColor = [107, 114, 128]
         data.cell.styles.fontStyle = 'bold'
       }
     },

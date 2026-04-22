@@ -54,7 +54,7 @@ export default function DocsEspeciales() {
 
   useEffect(() => {
     Promise.all([
-      supabase.from('players').select('id,name,rut').order('name'),
+      supabase.from('players').select('id,name,rut,estado').order('name'),
       supabase.from('club_info').select('player_id,club_name,contract_active'),
     ]).then(([{data: pl}, {data: ci}]) => {
       setPlayers(pl || [])
@@ -370,6 +370,7 @@ export function ListadoJugadores({ players, clubMap }) {
   const [ciudad, setCiudad] = useState('Santiago de Chile')
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0])
   const [seleccionados, setSeleccionados] = useState({})
+  const [estadoOverride, setEstadoOverride] = useState({})
   const [initialized, setInitialized] = useState(false)
 
   const GOLD_C = '#C9A84C'
@@ -413,6 +414,7 @@ export function ListadoJugadores({ players, clubMap }) {
         posicion: clubMap[p.id]?.position || '',
         club: clubMap[p.id]?.club_name || '',
         contractActive: !!clubMap[p.id]?.contract_active,
+        estado: estadoOverride[p.id] || p.estado || 'Activo',
       }))
       const doc = generarListadoJugadoresPDF({ jugadores: jugadoresData, fecha: fmtDate(fecha), ciudad })
       doc.save(`Nomina_Jugadores_NFC_${fecha}.pdf`)
@@ -465,7 +467,7 @@ export function ListadoJugadores({ players, clubMap }) {
         </div>
         <table>
           <thead>
-            <tr><th style={{width:32}}>✓</th><th>Nombre</th><th>RUT</th><th>Posición</th><th>Club</th><th>Estado</th></tr>
+            <tr><th style={{width:32}}>✓</th><th>Nombre</th><th>RUT</th><th>Posición</th><th>Club</th><th>Estado BD</th><th style={{width:130}}>Estado en doc.</th></tr>
           </thead>
           <tbody>
             {players.map(p=>(
@@ -478,7 +480,16 @@ export function ListadoJugadores({ players, clubMap }) {
                 <td style={{fontFamily:'monospace',fontSize:11}}>{p.rut||'—'}</td>
                 <td>{clubMap[p.id]?.position||'—'}</td>
                 <td>{clubMap[p.id]?.club_name||'—'}</td>
-                <td><span className={`pill ${clubMap[p.id]?.contract_active?'pill-ok':'pill-off'}`}>{clubMap[p.id]?.contract_active?'ACTIVO':'LIBRE'}</span></td>
+                <td><span className={`pill ${clubMap[p.id]?.contract_active?'pill-ok':'pill-off'}`}>{clubMap[p.id]?.contract_active?'ACTIVO':'—'}</span></td>
+                <td onClick={e=>e.stopPropagation()}>
+                  <select value={estadoOverride[p.id]||p.estado||'Activo'}
+                    onChange={e=>setEstadoOverride(prev=>({...prev,[p.id]:e.target.value}))}
+                    style={{background:'rgba(255,255,255,0.06)',border:'1px solid rgba(201,168,76,0.2)',borderRadius:4,padding:'3px 6px',fontSize:11,color:'#fff',fontFamily:'inherit',cursor:'pointer',width:'100%'}}>
+                    <option value="Activo">Activo</option>
+                    <option value="Cadete">Cadete</option>
+                    <option value="Libre">Libre</option>
+                  </select>
+                </td>
               </tr>
             ))}
           </tbody>
