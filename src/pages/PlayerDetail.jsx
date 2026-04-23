@@ -387,7 +387,7 @@ export default function PlayerDetail() {
                 <ImageCropper
                   shape="rect"
                   aspectRatio={3/4}
-                  storagePath={`${id}/profile.jpg`}
+                  storagePath={`${id}/profile_${Date.now()}.jpg`}
                   label="Seleccionar foto de perfil"
                   onSave={handleCropSave}
                   onCancel={() => setShowCropper(false)}
