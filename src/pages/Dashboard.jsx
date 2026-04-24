@@ -18,6 +18,11 @@ function fmtDate(d) {
 const GOLD = '#C9A84C'
 const PIE_COLORS = ['#C9A84C','#1B2B5E','#243580','#7a6025','#e8c96a','#555']
 
+const ROL_COLORS = {
+  admin: '#f87171', agente: '#C9A84C', socio: '#60a5fa',
+  digitador: '#34d399', visor: '#94a3b8',
+}
+
 export default function Dashboard() {
   const navigate = useNavigate()
   const [players, setPlayers] = useState([])
@@ -26,6 +31,8 @@ export default function Dashboard() {
   const [finSummary, setFinSummary] = useState([])
   const [transactions, setTransactions] = useState([])
   const [loading, setLoading] = useState(true)
+  const [userRole, setUserRole] = useState(null)
+  const [usuarios, setUsuarios] = useState([])
 
   useEffect(() => {
     Promise.all([
@@ -42,7 +49,23 @@ export default function Dashboard() {
       setTransactions(tx.data || [])
       setLoading(false)
     })
+
+    // Get current user role
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        supabase.from('user_roles').select('role').eq('user_id', user.id).single()
+          .then(({ data }) => setUserRole(data?.role || null))
+      }
+    })
   }, [])
+
+  // Load usuarios only for admin
+  useEffect(() => {
+    if (userRole === 'admin') {
+      supabase.from('user_roles').select('*').order('created_at', { ascending: false })
+        .then(({ data }) => setUsuarios(data || []))
+    }
+  }, [userRole])
 
   const totalIncome = finSummary.reduce((a,r) => a+(parseFloat(r.total_income)||0), 0)
   const totalExpenses = finSummary.reduce((a,r) => a+(parseFloat(r.total_expenses)||0), 0)
@@ -193,7 +216,7 @@ export default function Dashboard() {
       </div>
 
       <div className="section-title">CONTRATOS CON AGENCIA</div>
-      <div className="card">
+      <div className="card" style={{ marginBottom:20 }}>
         <div className="table-wrap">
           <table>
             <thead><tr><th>Jugador</th><th>Incorporación</th><th>Inicio</th><th>Duración</th><th>PDF</th><th>Estado</th></tr></thead>
@@ -221,6 +244,45 @@ export default function Dashboard() {
           </table>
         </div>
       </div>
+
+      {/* Widget usuarios — solo admin */}
+      {userRole === 'admin' && (
+        <div className="card" style={{ marginBottom:20, border:'1px solid rgba(201,168,76,0.15)' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+            <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', fontWeight:600, letterSpacing:1.5 }}>
+              USUARIOS DEL SISTEMA
+            </div>
+            <button onClick={() => navigate('/admin/usuarios')}
+              style={{ fontSize:11, padding:'4px 12px', borderRadius:4, border:`1px solid rgba(201,168,76,0.3)`,
+                background:'rgba(201,168,76,0.08)', color:GOLD, cursor:'pointer', fontFamily:'inherit' }}>
+              Gestionar →
+            </button>
+          </div>
+          <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+            {usuarios.length === 0 && (
+              <div style={{ fontSize:12, color:'rgba(255,255,255,0.25)' }}>Sin usuarios registrados</div>
+            )}
+            {usuarios.map(u => (
+              <div key={u.user_id} style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 12px',
+                background:'rgba(255,255,255,0.04)', borderRadius:6, border:'1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ width:28, height:28, borderRadius:'50%', display:'flex', alignItems:'center',
+                  justifyContent:'center', fontWeight:700, fontSize:12,
+                  background: (ROL_COLORS[u.role]||'#94a3b8') + '22',
+                  color: ROL_COLORS[u.role]||'#94a3b8' }}>
+                  {(u.nombre||u.email||'?')[0].toUpperCase()}
+                </div>
+                <div>
+                  <div style={{ fontSize:12, color:'#fff', fontWeight:500 }}>{u.nombre||u.email}</div>
+                  <div style={{ fontSize:10, color: ROL_COLORS[u.role]||'#94a3b8', fontWeight:600 }}>
+                    {(u.role||'visor').toUpperCase()}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <Cumpleanos />
     </div>
   )
