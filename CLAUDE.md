@@ -34,121 +34,133 @@ Desarrollado en React + Vite, conectado a Supabase como backend.
 ```
 src/
 ├── lib/
-│   ├── supabase.js          # Cliente Supabase con persistSession
-│   ├── generarContrato.js   # Generador PDF contrato (jsPDF)
-│   └── generarAnexoA.js     # Generador PDF Anexo A (jsPDF)
+│   ├── supabase.js              # Cliente Supabase con persistSession
+│   ├── generarContrato.js       # PDF contrato representación (con Art.11 opcional)
+│   ├── generarAnexoA.js         # PDF Anexo A
+│   ├── generarAutorizacion.js   # PDF Autorización exclusiva + Poder especial
+│   └── generarDocEspeciales.js  # PDF Nómina jugadores + Declaración conflicto interés
 ├── components/
-│   ├── Navbar.jsx           # Nav con hamburger mobile
-│   ├── Cumpleanos.jsx       # Widget cumpleaños dashboard
-│   ├── PlayerForm.jsx       # Form agregar/editar jugador
-│   ├── ClubContractForm.jsx # Form contrato con club
-│   ├── AgencyContractForm.jsx # Form contrato con agencia
-│   ├── TransactionForm.jsx  # Form transacción financiera
-│   └── MediaUploader.jsx    # Upload fotos/videos
+│   ├── Navbar.jsx
+│   ├── Cumpleanos.jsx
+│   ├── ImageCropper.jsx         # Recortador rect 3/4 (perfil) y 16/9 (noticias)
+│   ├── PlayerForm.jsx
+│   ├── ClubContractForm.jsx     # Con upload PDF
+│   ├── AgencyContractForm.jsx   # Con upload PDF
+│   ├── TransactionForm.jsx
+│   ├── MediaUploader.jsx
+│   └── DocsEspeciales.jsx       # 3 sub-pestañas: Autorización/Poder, Nómina, Declaración
 ├── pages/
-│   ├── Landing.jsx          # Landing pública
-│   ├── Login.jsx            # Login admin
-│   ├── Dashboard.jsx        # Panel financiero admin
-│   ├── PlayersAdmin.jsx     # Gestión plantel (tabs: jugadores/contratos/transacciones)
-│   ├── PlayerDetail.jsx     # Ficha pública jugador
-│   ├── Finanzas.jsx         # Gestión financiera (tabs: resumen/nueva/historial/anexo)
-│   ├── Noticias.jsx         # Noticias e hitos (público + admin)
-│   └── Documentos.jsx       # Generador PDF contratos y Anexo A
+│   ├── Landing.jsx              # Cards 3/4 con foto
+│   ├── Login.jsx
+│   ├── Dashboard.jsx
+│   ├── PlayersAdmin.jsx         # 4 tabs: Plantel, Contratos, Transacciones, Docs Especiales
+│   ├── PlayerDetail.jsx         # Ficha pública sin datos sensibles
+│   ├── Finanzas.jsx
+│   ├── Noticias.jsx
+│   ├── Documentos.jsx           # Contrato + Anexo A + Contrato Tipo
+│   └── RRSS.jsx                 # Generador plantillas redes sociales
 ```
 
 ## Tablas Supabase
 | Tabla | Descripción |
 |-------|-------------|
-| `players` | Datos básicos jugador (id, rut, name, birth_date, skill_foot, shoe_size, glove_size, height, weight, foto_url) |
-| `players_full_info` | Vista completa jugador (JOIN de todas las tablas) |
-| `club_info` | Contratos con clubes (salary, commission_%, transfermarkt_profile, transfermarkt_valuation) |
-| `agency_contracts` | Contratos con la agencia (incorporation_date, contract_date, duration, pdf_url) |
-| `transactions` | Movimientos financieros (type: income/expense, subtype, amount, moneda, documento_respaldo) |
-| `player_financial_summary` | Vista resumen financiero por jugador |
-| `player_media` | Fotos y videos (media_type: photo/video, url, display_order) |
-| `contact_info` | Datos de contacto jugador |
-| `user_roles` | Roles de usuario (admin/digitador/visor) |
+| `players` | id, rut, name, birth_date, skill_foot, shoe_size, glove_size, height, weight, foto_url, gender (M/F), **estado** (Activo/Cadete/Libre) |
+| `players_full_info` | Vista completa jugador |
+| `club_info` | Contratos clubes (salary, commission_%, transfermarkt_profile, transfermarkt_valuation, contract_pdf_url) |
+| `agency_contracts` | Contratos agencia (incorporation_date, contract_date, duration, contract_pdf_url) |
+| `transactions` | Movimientos financieros (type, subtype, amount, moneda, documento_respaldo) |
+| `player_financial_summary` | Vista resumen financiero |
+| `player_media` | Fotos y videos (media_type, url, display_order) |
+| `contact_info` | Datos contacto jugador |
+| `user_roles` | Roles (admin/digitador/visor) |
 | `noticias` | Noticias e hitos (tipo, jugador_id, visible, imagen_url, video_url) |
 | `admin_users` | Usuarios administradores |
 
-## Roles de usuario
-- **admin** → acceso total
-- **digitador** → puede registrar transacciones, no editar jugadores
-- **visor** → solo lectura
+## Columnas importantes agregadas
+- `players.gender` — text, default 'M' (agregado 18-04-2026)
+- `players.estado` — text, default 'Activo' — valores: Activo / Cadete / Libre (agregado 23-04-2026)
+- `club_info.contract_pdf_url` — text
+- `agency_contracts.contract_pdf_url` — text
 
-## Categorías financieras
-**Ingresos:**
-- Comisión Sueldo (5% bruto anual ≤200K USD / 3% exceso)
-- Comisión Traspaso
-- Comisión Imagen / Marketing (10%)
-- Comisión Otros
+## Storage Supabase (bucket: player-media)
+- Fotos perfil jugador: `{player_id}/profile_{timestamp}.jpg` ← timestamp para evitar cache
+- Contratos agencia: `contratos/Contrato_NFC_{Jugador}_{año}.pdf`
+- Contratos club: `contratos/Contrato_Club_{Club}_{Jugador}_{año}.pdf`
+- Fotos noticias: `noticias/noticia_{timestamp}.jpg`
+- Logo: `player-media/logo_nfc.JPG`
 
-**Gastos (Anexo A):**
-- Implementación Deportiva (Zapatos / Guantes / Equipamiento)
-- Apoyo económico directo
-- Vestuario / Indumentaria
-- Accesorios deportivos
-- Alimentación
-- Gimnasio / Preparación física
-- Arriendo / Alojamiento
-- Traslados / Transporte
-- Gestión legal
-- Gestión comercial (Auspicio en especie)
-- Pérdida patrimonial
-- Gastos administrativos / Mantención / Otros
-
-## Modelo de negocio clave
-- El **Anexo A** documenta la inversión total en el jugador
-- Se alimenta de las transacciones del sistema filtradas por jugador
-- Es un instrumento legal ante cambios de representación
-- El documento de respaldo (boleta/factura) es crítico para validar cada gasto
-
-## Políticas RLS importantes
+## Políticas RLS Storage relevantes
 ```sql
--- Todas las tablas tienen allow_all para autenticados
-create policy "allow_all_X" on X for all using (true);
--- Noticias: público ve solo visible=true
-create policy "public_read_noticias" on noticias for select using (visible = true);
--- Storage player-media: público puede leer
-create policy "public_read_storage" on storage.objects for select using (bucket_id = 'player-media');
+-- UPDATE necesaria para reemplazar fotos
+create policy "allow_update_storage" on storage.objects
+for update using (bucket_id = 'player-media')
+with check (bucket_id = 'player-media');
 ```
+
+## Generador de contratos PDF
+- Párrafos justificados
+- Art. 10: compensación Anexo A (default)
+- Art. 11 (opcional): compensación fija USD 150.000 para jugadores con derechos de imagen
+- Arts. 10 y 11 son excluyentes
+- Contrato Tipo disponible desde cualquier página de Documentos
+
+## Docs Especiales (PlayersAdmin tab 4)
+3 sub-pestañas:
+1. **Autorización / Poder** — Autorización Exclusiva de Gestión + Poder Especial (dos botones)
+   - Agente externo con nombre y licencia FIFA
+   - Jugadores desde BD con club actual automático
+   - Clubes/ligas opcionales
+   - Comisión configurable o sin comisión
+   - Vigencia con cláusula exoneración (Poder Especial)
+2. **Nómina de Jugadores** — PDF con tabla de jugadores representados
+   - Selección manual con checkboxes (todos seleccionados por defecto)
+   - Selector de columnas: RUT, Posición, Club, Estado (para entregar solo lo necesario)
+   - Estado editable por jugador en el momento (sin afectar BD)
+   - Colores: Activo=verde, Cadete=dorado, Libre=gris
+3. **Declaración Conflicto de Interés** — Declaración jurada FIFA/AFUCH
+   - Sugerencias predefinidas para "exigida por"
+   - 6 declaraciones estándar + campo para agregar adicionales
+   - Espacio para timbre notaría
+
+## Generador RRSS (src/pages/RRSS.jsx)
+- 5 plantillas: Bienvenida, Cumpleaños, 1er Contrato, 1er Gol, Renovación
+- Formatos: 1:1 Feed y 9:16 Story
+- Carga jugador desde BD (foto + nombre + club + gender)
+- Género M/F adapta "Bienvenido/a", "representado/a", tag del documento
+- Diseño: foto 3/4 con fade, texto anclado abajo, identidad NFC
+- Descarga PNG 1080px
 
 ## Comandos frecuentes
 ```bash
-# Correr localmente
+# Local
 cd /Volumes/Respaldos/Desarrollo/nfc-agency
 npm run dev  # → http://localhost:5173
 
-# Subir cambios (siempre archivos individuales, no src completo)
+# Deploy — SIEMPRE archivos individuales
 git add src/pages/Archivo.jsx
 git commit -m "descripción"
 git push
-# Vercel redespliega automáticamente
-
-# Instalar dependencias nuevas
-npm install nombre-paquete
-git add package.json package-lock.json
-git commit -m "add nombre-paquete"
-git push
 ```
 
-## Lecciones aprendidas
-- **NUNCA copiar src completo** — siempre reemplazar archivos individuales
-- **NUNCA usar `echo "" > archivo`** — borra el contenido (usar `>>` para agregar)
-- **NUNCA eliminar desde tabla `players`** — el cascade borra todo el historial
-- El `.env` no se sube a GitHub — recrear manualmente con las credenciales de Supabase
-- Vercel puede tener caché — forzar redeploy desde Deployments si los cambios no aparecen
-- Las vistas de Supabase (players_full_info, player_financial_summary) no admiten políticas RLS
-- jsPDF necesita `npm install` local y estar en `package.json`
+## Lecciones aprendidas — CRÍTICAS
+- **NUNCA copiar src completo** — siempre archivos individuales
+- **NUNCA `echo "" > archivo`** — borra contenido
+- **NUNCA eliminar desde `players`** — cascade borra todo
+- **NUNCA eliminar desde `club_info` sin verificar** — pueden ser duplicados legítimos
+- `.env` no va a GitHub
+- Fotos perfil usan `profile_{timestamp}.jpg` para evitar cache de Storage
+- La vista `players_full_info` genera duplicados si un jugador tiene 2 agency_contracts
+- Las vistas Supabase no admiten RLS
+- `src/main.jsx` es el punto de entrada — si se borra el build falla
 
-## Pendientes al 25-03-2026
-- [ ] Fotos de jugadores en grilla pública (fix RLS update players)
+## Pendientes al 23-04-2026
+- [ ] Fix tag RRSS: "NUEVO REPRESENTADA" → "NUEVA REPRESENTADA" (género femenino)
 - [ ] Logo NFC en header de PDFs generados
-- [ ] Recortador de imágenes (perfil circular + noticias rectangular)
-- [ ] Exportar noticias/hitos a RRSS (Instagram, Facebook, Threads, X)
-- [ ] Imagen hero landing con foto real de jugador en acción
-- [ ] Vincular transacciones importadas a jugadores por RUT
-- [ ] Generación de contratos con menores (tutor automático si birth_date < 18)
-- [ ] Fecha incorporación agencia automática al renovar contrato
-- [ ] Historial completo contratos por jugador en ficha
-- [ ] Exportar Anexo A a Word (.docx) editable
+- [ ] Plantillas RRSS con diseños distintos por evento
+- [ ] Imagen hero landing con foto real
+- [ ] Exportar Anexo A a Word (.docx)
+- [ ] Historial contratos por jugador en ficha admin
+- [ ] HTML standalone generador RRSS
+- [ ] Vincular transacciones importadas por RUT
+- [ ] Campo `estado` (Activo/Cadete/Libre) en PlayerForm para editar desde app
+- [ ] Limpieza fotos antiguas en Storage al cambiar foto perfil

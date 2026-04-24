@@ -72,35 +72,57 @@ function drawArticulo(doc, numero, texto, x, y, W, LINE_H, checkPage, addPageFn)
   return y + 4
 }
 
-function drawFirmas(doc, y, agenteExterno) {
-  if (y > 230) { doc.addPage(); y = 30 }
-  else y += 10
+const FIRMANTES = {
+  aldo: {
+    nombre: 'ALDO CAMILO MALDONADO REBOLLEDO',
+    rut: '10.370.416-2',
+    cargo: 'Agente FIFA · Licencia Nº 202406-7288',
+    cargo2: 'Sociedad Nueva Fútbol Chile SpA',
+    pp: false,
+  },
+  marcos: {
+    nombre: 'MARCOS GONZÁLEZ',
+    rut: '—',
+    cargo: 'p.p. ALDO CAMILO MALDONADO REBOLLEDO',
+    cargo2: 'Agente FIFA · Licencia Nº 202406-7288',
+    pp: true,
+  },
+  jorge: {
+    nombre: 'JORGE RUEGER',
+    rut: '—',
+    cargo: 'p.p. ALDO CAMILO MALDONADO REBOLLEDO',
+    cargo2: 'Agente FIFA · Licencia Nº 202406-7288',
+    pp: true,
+  },
+}
 
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(9)
-  doc.setTextColor(...NAVY)
-  doc.text('En señal de conformidad, firman las partes:', X, y)
+function drawFirmas(doc, y, firmante = 'aldo') {
+  if (y > 240) { doc.addPage(); y = 30 }
+  else y += 12
+
+  const f = FIRMANTES[firmante] || FIRMANTES.aldo
+  const sigW = 90
+
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...NAVY)
+  doc.text('En señal de conformidad, firma la Agencia:', X, y)
   y += 16
 
-  const col1X = X, col2X = X + W / 2 + 5, colW = W / 2 - 10
   doc.setDrawColor(...NAVY); doc.setLineWidth(0.5)
-  doc.line(col1X, y + 20, col1X + colW, y + 20)
-  doc.line(col2X, y + 20, col2X + colW, y + 20)
+  doc.line(X, y + 20, X + sigW, y + 20)
 
   doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...NAVY)
-  doc.text('ALDO CAMILO MALDONADO REBOLLEDO', col1X + colW / 2, y + 26, { align: 'center', maxWidth: colW })
-  doc.text(agenteExterno.nombre.toUpperCase(), col2X + colW / 2, y + 26, { align: 'center', maxWidth: colW })
-
+  doc.text(f.nombre, X + sigW / 2, y + 26, { align: 'center', maxWidth: sigW })
   doc.setFont('helvetica', 'normal'); doc.setTextColor(...GRAY); doc.setFontSize(7.5)
-  doc.text('AGENTE FIFA LICENCIA Nº 202406-7288', col1X + colW / 2, y + 32, { align: 'center' })
-  doc.text('SOCIEDAD NUEVA FÚTBOL CHILE SpA', col1X + colW / 2, y + 37, { align: 'center' })
-  doc.text(`AGENTE FIFA LICENCIA Nº ${agenteExterno.licencia}`, col2X + colW / 2, y + 32, { align: 'center' })
+  if (f.rut !== '—') doc.text(`RUT: ${f.rut}`, X + sigW / 2, y + 31, { align: 'center' })
+  doc.text(f.cargo, X + sigW / 2, y + 36, { align: 'center', maxWidth: sigW })
+  doc.text(f.cargo2, X + sigW / 2, y + 41, { align: 'center', maxWidth: sigW })
 }
 
 // ─── AUTORIZACIÓN EXCLUSIVA ───────────────────────────────────────────────────
 export function generarAutorizacionPDF(datos) {
   const { ciudad='Santiago de Chile', fecha, agenteExterno, jugadores, clubes,
-    incluyeComision, comisionNFC, comisionExterno, fechaInicio, fechaTermino } = datos
+    incluyeComision, comisionNFC, comisionExterno, fechaInicio, fechaTermino,
+    firmante = 'aldo' } = datos
 
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   let page = 1
@@ -161,7 +183,7 @@ export function generarAutorizacionPDF(datos) {
   // Art. 5
   y = drawArticulo(doc, 'QUINTO', 'Las partes declaran y garantizan que son libres de celebrar este acuerdo y que no existen compromisos previos que entren en conflicto con las obligaciones aquí estipuladas.', X, y, W, LINE_H, checkPage, addPageFn)
 
-  drawFirmas(doc, y, agenteExterno)
+  drawFirmas(doc, y, firmante)
 
   const totalPgs = doc.getNumberOfPages()
   for (let i = 1; i <= totalPgs; i++) {
@@ -176,7 +198,8 @@ export function generarAutorizacionPDF(datos) {
 // ─── PODER ESPECIAL ───────────────────────────────────────────────────────────
 export function generarPoderEspecialPDF(datos) {
   const { ciudad='Santiago de Chile', fecha, agenteExterno, jugadores, clubes,
-    incluyeComision, comisionNFC, comisionExterno, fechaInicio, fechaTermino } = datos
+    incluyeComision, comisionNFC, comisionExterno, fechaInicio, fechaTermino,
+    firmante = 'aldo' } = datos
 
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   let page = 1
@@ -231,7 +254,7 @@ export function generarPoderEspecialPDF(datos) {
   const numFinal = incluyeComision ? '6.-' : '5.-'
   y = drawArticulo(doc, numFinal, 'Las partes declaran y garantizan que son libres de celebrar este acuerdo y que no existen compromisos previos que entren en conflicto con las obligaciones aquí estipuladas.', X, y, W, LINE_H, checkPage, addPageFn)
 
-  drawFirmas(doc, y, agenteExterno)
+  drawFirmas(doc, y, firmante)
 
   const totalPgs = doc.getNumberOfPages()
   for (let i = 1; i <= totalPgs; i++) {

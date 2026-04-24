@@ -43,6 +43,7 @@ export default function DocsEspeciales() {
 
   // Comisión
   const [incluyeComision, setIncluyeComision] = useState(true)
+  const [firmante, setFirmante] = useState('aldo')
   const [comisionNFC, setComisionNFC] = useState(50)
   const [comisionExterno, setComisionExterno] = useState(50)
 
@@ -101,6 +102,7 @@ export default function DocsEspeciales() {
     comisionExterno: parseInt(comisionExterno),
     fechaInicio: fmtDateLong(fechaInicio),
     fechaTermino: fmtDateLong(fechaTermino),
+    firmante,
   })
 
   const validate = () => {
@@ -337,6 +339,25 @@ export default function DocsEspeciales() {
               <div style={{ gridColumn: '1/-1' }}>
                 <label style={LABEL}>FECHA DE TÉRMINO</label>
                 <input style={INPUT} type="date" value={fechaTermino} onChange={e => setFechaTermino(e.target.value)} />
+              </div>
+              <div style={{ gridColumn: '1/-1' }}>
+                <label style={LABEL}>FIRMANTE POR LA AGENCIA</label>
+                <div style={{ display:'flex', gap:6 }}>
+                  {[
+                    ['aldo', 'Aldo Maldonado'],
+                    ['marcos', 'p.p. Marcos González'],
+                    ['jorge', 'p.p. Jorge Rueger'],
+                  ].map(([val, lbl]) => (
+                    <button key={val} onClick={() => setFirmante(val)}
+                      style={{ flex:1, padding:'7px 4px', fontSize:11, borderRadius:5,
+                        border: `1px solid ${firmante===val ? GOLD_C : 'rgba(255,255,255,0.1)'}`,
+                        background: firmante===val ? 'rgba(201,168,76,0.15)' : 'transparent',
+                        color: firmante===val ? GOLD_C : 'rgba(255,255,255,0.4)',
+                        cursor:'pointer', fontFamily:'inherit', textAlign:'center' }}>
+                      {lbl}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
