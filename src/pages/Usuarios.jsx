@@ -89,26 +89,21 @@ export default function Usuarios() {
     setSaving(true); setMsg('')
 
     try {
-      // 1. Create user via Supabase Auth Admin API
-      const { data: { user }, error: authError } = await supabase.auth.admin.createUser({
-        email,
-        email_confirm: false,
-        user_metadata: { nombre },
-      })
-
-      if (authError) throw new Error(authError.message)
-
-      // 2. Assign role in user_roles table
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .upsert({ user_id: user.id, email, nombre, role: rol })
-
-      if (roleError) throw new Error(roleError.message)
-
-      // 3. Send password reset email so user can set their password
-      await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/login`,
-      })
+      // Llamar a la Edge Function crear-usuario
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/crear-usuario`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ email, nombre, rol }),
+        }
+      )
+      const result = await res.json()
+      if (!res.ok || result.error) throw new Error(result.error || 'Error creando usuario')
 
       setMsg(`✓ Usuario creado. Se envió un email a ${email} para establecer contraseña.`)
       setEmail(''); setNombre(''); setRol('visor')
