@@ -103,12 +103,12 @@ export default function PlayersAdmin() {
       </div>
 
       {/* TABS */}
-<div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
-  <button style={TAB(tab === 'players')} onClick={() => setTab('players')}>Plantel ({players.length})</button>
-  <button style={TAB(tab === 'contracts')} onClick={() => setTab('contracts')}>Contratos ({clubInfo.length + agencyContracts.length})</button>
-  <button style={TAB(tab === 'transactions')} onClick={() => setTab('transactions')}>Transacciones ({transactions.length})</button>
-  <button style={TAB(tab === 'docs')} onClick={() => setTab('docs')}>Docs Especiales</button>
-</div>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+        <button style={TAB(tab === 'players')} onClick={() => setTab('players')}>Plantel ({players.length})</button>
+        <button style={TAB(tab === 'contracts')} onClick={() => setTab('contracts')}>Contratos ({clubInfo.length + agencyContracts.length})</button>
+        <button style={TAB(tab === 'transactions')} onClick={() => setTab('transactions')}>Transacciones ({transactions.length})</button>
+        <button style={TAB(tab === 'docs')} onClick={() => setTab('docs')}>Docs Especiales</button>
+      </div>
 
       {/* PLANTEL */}
       {tab === 'players' && (
@@ -117,7 +117,21 @@ export default function PlayersAdmin() {
             style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 5, padding: '7px 12px', fontSize: 12, color: '#fff', fontFamily: 'inherit', outline: 'none', width: 260, marginBottom: 12 }} />
           <div className="card" style={{ overflowX: 'auto' }}>
             <table>
-              <thead><tr><th>Nombre</th><th>RUT</th><th>Posición</th><th>Club</th><th>Nacimiento</th><th>Altura</th><th>Peso</th><th>Pie</th><th>Estado</th><th>Acciones</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>RUT</th>
+                  <th>Posición</th>
+                  <th>Club</th>
+                  <th>Nacimiento</th>
+                  <th>Altura</th>
+                  <th>Peso</th>
+                  <th>Pie</th>
+                  <th>Estado</th>
+                  <th>Landing</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
               <tbody>
                 {filtered.map(p => {
                   const ci = clubMap[p.id] || {}
@@ -131,14 +145,33 @@ export default function PlayersAdmin() {
                       <td>{p.height ? p.height + ' cm' : '—'}</td>
                       <td>{p.weight ? p.weight + ' kg' : '—'}</td>
                       <td>{p.skill_foot || '—'}</td>
-                      <td><span className={`pill ${ci.contract_active ? 'pill-ok' : 'pill-off'}`}>{ci.contract_active ? 'ACTIVO' : '—'}</span></td>
+                      <td>
+                        <span className={`pill ${ci.contract_active ? 'pill-ok' : 'pill-off'}`}>
+                          {ci.contract_active ? 'ACTIVO' : '—'}
+                        </span>
+                      </td>
+                      <td>
+                        <button
+                          onClick={async () => {
+                            await supabase.from('players').update({ mostrar_en_landing: !p.mostrar_en_landing }).eq('id', p.id)
+                            load()
+                          }}
+                          style={{
+                            fontSize: 10, padding: '3px 8px', borderRadius: 3, cursor: 'pointer', fontFamily: 'inherit',
+                            border: p.mostrar_en_landing ? '1px solid rgba(74,222,128,0.4)' : '1px solid rgba(255,255,255,0.1)',
+                            background: p.mostrar_en_landing ? 'rgba(74,222,128,0.1)' : 'transparent',
+                            color: p.mostrar_en_landing ? '#4ade80' : 'rgba(255,255,255,0.3)',
+                          }}>
+                          {p.mostrar_en_landing ? '✓ VISIBLE' : 'OCULTO'}
+                        </button>
+                      </td>
                       <td>
                         <div style={{ display: 'flex', gap: 4 }}>
                           <button style={EDIT_BTN} onClick={() => setModal({ type: 'player', data: p })}>Editar</button>
                           <button style={GHOST_BTN} onClick={() => setModal({ type: 'club', data: ci.id ? ci : null, playerId: p.id })}>Club</button>
                           <button style={GHOST_BTN} onClick={() => setModal({ type: 'agency', data: null, playerId: p.id, playerName: p.name })}>Agencia</button>
                           <button onClick={() => navigate(`/admin/documentos/${p.id}`)}
-                            style={{fontSize:10,padding:'3px 8px',borderRadius:3,border:'1px solid rgba(201,168,76,0.4)',background:'rgba(201,168,76,0.1)',color:'#C9A84C',cursor:'pointer',fontFamily:'inherit'}}>
+                            style={{ fontSize: 10, padding: '3px 8px', borderRadius: 3, border: '1px solid rgba(201,168,76,0.4)', background: 'rgba(201,168,76,0.1)', color: '#C9A84C', cursor: 'pointer', fontFamily: 'inherit' }}>
                             📄 Docs
                           </button>
                         </div>
@@ -146,7 +179,7 @@ export default function PlayersAdmin() {
                     </tr>
                   )
                 })}
-                {!filtered.length && <tr><td colSpan={10} style={{ textAlign: 'center', color: 'rgba(255,255,255,0.25)', padding: 24 }}>Sin resultados</td></tr>}
+                {!filtered.length && <tr><td colSpan={11} style={{ textAlign: 'center', color: 'rgba(255,255,255,0.25)', padding: 24 }}>Sin resultados</td></tr>}
               </tbody>
             </table>
           </div>
@@ -200,7 +233,7 @@ export default function PlayersAdmin() {
                       <td>{c.contract_duration_months ? c.contract_duration_months + ' meses' : '—'}</td>
                       <td>{c.contract_pdf_url ? <a href={c.contract_pdf_url} target="_blank" rel="noreferrer" style={{ color: '#C9A84C', fontSize: 10 }}>Ver PDF</a> : '—'}</td>
                       <td><span className={`pill ${pc}`}>{es}</span></td>
-                      <td><button style={EDIT_BTN} onClick={() => setModal({ type: 'agency', data: c, playerId: c.player_id, playerName: players.find(x=>x.id===c.player_id)?.name })}>Editar</button></td>
+                      <td><button style={EDIT_BTN} onClick={() => setModal({ type: 'agency', data: c, playerId: c.player_id, playerName: players.find(x => x.id === c.player_id)?.name })}>Editar</button></td>
                     </tr>
                   )
                 })}
