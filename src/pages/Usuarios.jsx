@@ -92,7 +92,7 @@ export default function Usuarios() {
       // Llamar a la Edge Function crear-usuario
       const { data: { session } } = await supabase.auth.getSession()
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/crear-usuario`,
+        `https://qgjdphqmwgrkwfbxbyhc.supabase.co/functions/v1/crear-usuario`,
         {
           method: 'POST',
           headers: {
