@@ -14,7 +14,7 @@ const W = 180
 
 function addHeader(doc, pageNum, totalPages, logoDataUrl) {
   if (logoDataUrl) {
-    try { doc.addImage(logoDataUrl, 'JPEG', 15, 2, 18, 10) } catch(e) {}
+    try { doc.addImage(logoDataUrl, 'PNG', 15, 2, 18, 10) } catch(e) {}
   } else {
     doc.setFontSize(8); doc.setFont('helvetica', 'bold')
     doc.setTextColor(...NAVY); doc.text('NFC', 15, 9)

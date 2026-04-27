@@ -3,6 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 
+const LOGO_URL = 'https://qgjdphqmwgrkwfbxbyhc.supabase.co/storage/v1/object/public/player-media/logo_nfc_transparent.png'
+
 export default function Navbar() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -27,11 +29,12 @@ export default function Navbar() {
   return (
     <>
       <nav style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 20px', height:56, background:'#0f1a3a', borderBottom:'1px solid rgba(201,168,76,0.3)', position:'sticky', top:0, zIndex:100 }}>
-        <div style={{ cursor:'pointer' }} onClick={() => go('/')}>
-          <div style={{ fontFamily:'Bebas Neue', fontSize:15, letterSpacing:2, color:'#fff', lineHeight:1.1 }}>
-            NUEVA <span style={{color:'#C9A84C'}}>FÚTBOL</span> CHILE
-          </div>
-          <div style={{ fontSize:8, color:'rgba(255,255,255,0.3)', letterSpacing:2 }}>AGENCIA DE REPRESENTACIÓN · SPA</div>
+        <div style={{ cursor:'pointer', display:'flex', alignItems:'center', gap:10 }} onClick={() => go('/')}>
+          <img
+            src={LOGO_URL}
+            alt="Nueva Fútbol Chile"
+            style={{ height:42, width:'auto', objectFit:'contain' }}
+          />
         </div>
         <div style={{ display:'flex', gap:6, alignItems:'center' }} className="desktop-nav">
           {navItems.filter(i=>i.show).map(item => (

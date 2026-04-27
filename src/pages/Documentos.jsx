@@ -96,7 +96,7 @@ export default function Documentos() {
         duracionAnios: contratoForm.duracionAnios,
         ciudad: contratoForm.ciudad,
         tieneDerechosImagen: contratoForm.tieneDerechosImagen,
-        logoUrl: 'https://qgjdphqmwgrkwfbxbyhc.supabase.co/storage/v1/object/public/player-media/logo_nfc.JPG',
+        logoUrl: 'https://qgjdphqmwgrkwfbxbyhc.supabase.co/storage/v1/object/public/player-media/logo_nfc_transparent.png',
       })
       const nombre = player.name.replace(/\s+/g,'_')
       doc.save(`Contrato_NFC_${nombre}_${new Date().getFullYear()}.pdf`)
@@ -123,7 +123,7 @@ export default function Documentos() {
         duracionAnios: 2,
         ciudad: 'Santiago',
         tieneDerechosImagen: false,
-        logoUrl: 'https://qgjdphqmwgrkwfbxbyhc.supabase.co/storage/v1/object/public/player-media/logo_nfc.JPG',
+        logoUrl: 'https://qgjdphqmwgrkwfbxbyhc.supabase.co/storage/v1/object/public/player-media/logo_nfc_transparent.png',
       })
       doc.save(`Contrato_Tipo_NFC_${new Date().getFullYear()}.pdf`)
     } catch(e) { console.error(e) }
