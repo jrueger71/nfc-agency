@@ -20,6 +20,20 @@ const PIE_COLORS = ['#C9A84C','#1B2B5E','#243580','#7a6025','#e8c96a','#555']
 const ROL_COLORS = { admin:'#f87171', agente:'#C9A84C', socio:'#60a5fa', digitador:'#34d399', visor:'#94a3b8' }
 const MARCAS_LABEL = { adidas:'Adidas', nike:'Nike', skechers:'Skechers', skechers_w:'Skechers (M)' }
 
+function calcularProgreso(clausula, stats) {
+  const statsAplican = stats.filter(s => {
+    if (clausula.competencia_aplica !== 'Todas' && s.competencia !== clausula.competencia_aplica) return false
+    if (clausula.tipo === 'partidos' && s.minutos < (clausula.minutos_minimos || 0)) return false
+    return true
+  })
+  let valor = 0
+  if (clausula.tipo === 'partidos') valor = statsAplican.length
+  else if (clausula.tipo === 'minutos') valor = statsAplican.reduce((a, s) => a + (s.minutos || 0), 0)
+  else if (clausula.tipo === 'goles') valor = statsAplican.reduce((a, s) => a + (s.goles || 0), 0)
+  else if (clausula.tipo === 'asistencias') valor = statsAplican.reduce((a, s) => a + (s.asistencias || 0), 0)
+  return { valor, porcentaje: Math.min((valor / clausula.umbral) * 100, 100) }
+}
+
 export default function Dashboard() {
   const navigate = useNavigate()
   const [players, setPlayers] = useState([])
@@ -28,6 +42,8 @@ export default function Dashboard() {
   const [finSummary, setFinSummary] = useState([])
   const [transactions, setTransactions] = useState([])
   const [shoeOrders, setShoeOrders] = useState([])
+  const [clauses, setClauses] = useState([])
+  const [allStats, setAllStats] = useState([])
   const [loading, setLoading] = useState(true)
   const [userRole, setUserRole] = useState(null)
   const [usuarios, setUsuarios] = useState([])
@@ -41,13 +57,17 @@ export default function Dashboard() {
       supabase.from('player_financial_summary').select('player_id,player_name,total_income,total_expenses,balance').order('balance', { ascending:false }),
       supabase.from('transactions').select('id,player_id,transaction_date,type,subtype,description,amount,moneda').order('transaction_date', { ascending:false }).limit(8),
       supabase.from('shoe_orders').select('*').order('fecha_pedido', { ascending:false }),
-    ]).then(([p, ci, ac, fs, tx, so]) => {
+      supabase.from('player_clauses').select('*').eq('estado', 'pendiente'),
+      supabase.from('player_stats').select('*'),
+    ]).then(([p, ci, ac, fs, tx, so, cl, ps]) => {
       setPlayers(p.data || [])
       setClubInfo(ci.data || [])
       setAgencyContracts(ac.data || [])
       setFinSummary(fs.data || [])
       setTransactions(tx.data || [])
       setShoeOrders(so.data || [])
+      setClauses(cl.data || [])
+      setAllStats(ps.data || [])
       setLoading(false)
     })
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -75,10 +95,23 @@ export default function Dashboard() {
     return (end - Date.now()) / (24*3600*1000) < 90 && (end - Date.now()) > 0
   })
 
-  // ── Alertas zapatos: último pedido entregado por jugador ──────────────────
+  // ── Alertas cláusulas: pendientes con progreso ≥ 75% ─────────────────────
   const playerMap = {}
   players.forEach(p => { playerMap[p.id] = p })
 
+  const clauseAlerts = clauses.map(c => {
+    const statsJugador = allStats.filter(s => s.player_id === c.player_id)
+    const { valor, porcentaje } = calcularProgreso(c, statsJugador)
+    return { ...c, valor, porcentaje }
+  }).filter(c => c.porcentaje >= 75).sort((a, b) => b.porcentaje - a.porcentaje)
+
+  const clausesActivadas = clauses.filter(c => {
+    const statsJugador = allStats.filter(s => s.player_id === c.player_id)
+    const { porcentaje } = calcularProgreso(c, statsJugador)
+    return porcentaje >= 100
+  })
+
+  // ── Alertas zapatos ───────────────────────────────────────────────────────
   const lastDeliveredByPlayer = {}
   shoeOrders.filter(o => o.estado === 'entregado' && o.fecha_entrega).forEach(o => {
     const prev = lastDeliveredByPlayer[o.player_id]
@@ -86,8 +119,6 @@ export default function Dashboard() {
       lastDeliveredByPlayer[o.player_id] = o
     }
   })
-
-  // Agrupar todos los pares entregados del último pedido por jugador
   const paresEntregadosByPlayer = {}
   shoeOrders.filter(o => o.estado === 'entregado' && o.fecha_entrega).forEach(o => {
     const last = lastDeliveredByPlayer[o.player_id]
@@ -96,31 +127,25 @@ export default function Dashboard() {
       paresEntregadosByPlayer[o.player_id].pares += o.pares || 0
     }
   })
-
   const shoeAlerts = Object.entries(paresEntregadosByPlayer).map(([pid, info]) => {
     const agotamiento = new Date(info.fecha)
     agotamiento.setMonth(agotamiento.getMonth() + (info.pares * 2))
-    return { player_id: pid, dias: Math.floor((agotamiento - Date.now()) / (24*3600*1000)), agotamiento }
+    return { player_id: pid, dias: Math.floor((agotamiento - Date.now()) / (24*3600*1000)) }
   }).filter(a => a.dias <= 30).sort((a, b) => a.dias - b.dias)
 
-  // ── Resumen anual botines por jugador ─────────────────────────────────────
+  // ── Resumen anual botines ─────────────────────────────────────────────────
   const ordersAnio = shoeOrders.filter(o =>
-    o.estado === 'entregado' &&
-    o.fecha_entrega &&
+    o.estado === 'entregado' && o.fecha_entrega &&
     new Date(o.fecha_entrega).getFullYear() === shoeAnio
   )
-
   const shoeResumenByPlayer = {}
   ordersAnio.forEach(o => {
-    if (!shoeResumenByPlayer[o.player_id]) {
-      shoeResumenByPlayer[o.player_id] = { elite: 0, pro: 0, entregas: [] }
-    }
+    if (!shoeResumenByPlayer[o.player_id]) shoeResumenByPlayer[o.player_id] = { elite: 0, pro: 0, entregas: [] }
     const r = shoeResumenByPlayer[o.player_id]
     if (o.categoria === 'Elite') r.elite += o.pares || 0
     else r.pro += o.pares || 0
     r.entregas.push({ fecha: o.fecha_entrega, pares: o.pares, categoria: o.categoria, marca: o.marca, modelo: o.modelo, suela: o.suela })
   })
-
   const aniosDisponibles = [...new Set(shoeOrders.filter(o => o.fecha_entrega).map(o => new Date(o.fecha_entrega).getFullYear()))].sort((a,b) => b-a)
   if (!aniosDisponibles.includes(new Date().getFullYear())) aniosDisponibles.unshift(new Date().getFullYear())
 
@@ -146,6 +171,51 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* ── Alerta cláusulas ────────────────────────────────────────────────── */}
+      {clauseAlerts.length > 0 && (
+        <div style={{ background:'rgba(52,211,153,0.06)', border:'1px solid rgba(52,211,153,0.25)', borderRadius:8, padding:'12px 16px', marginBottom:16 }}>
+          <div style={{ fontSize:11, fontWeight:600, color:'#34d399', letterSpacing:1, marginBottom:10 }}>
+            📋 CLÁUSULAS DE RENDIMIENTO — {clausesActivadas.length > 0 ? `${clausesActivadas.length} activada(s)` : `${clauseAlerts.length} próxima(s) a activarse`}
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            {clauseAlerts.map(c => {
+              const p = playerMap[c.player_id]
+              const activada = c.porcentaje >= 100
+              return (
+                <div key={c.id} style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap',
+                  padding:'8px 12px', borderRadius:6,
+                  background: activada ? 'rgba(74,222,128,0.08)' : 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${activada ? 'rgba(74,222,128,0.2)' : 'rgba(255,255,255,0.06)'}` }}>
+                  <span style={{ fontSize:16 }}>{activada ? '🟢' : '🟡'}</span>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontSize:12, color:'#fff', fontWeight:600 }}>
+                      {p?.name || '—'} — {c.descripcion}
+                    </div>
+                    <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', marginTop:2 }}>
+                      {c.valor} / {c.umbral} {c.tipo} · {c.competencia_aplica}
+                      {c.monto_activacion && <span style={{ color:GOLD, marginLeft:8 }}>→ {fmt$(c.monto_activacion)}</span>}
+                    </div>
+                  </div>
+                  <div style={{ display:'flex', alignItems:'center', gap:8, minWidth:120 }}>
+                    <div style={{ flex:1, height:4, background:'rgba(255,255,255,0.06)', borderRadius:2 }}>
+                      <div style={{ height:'100%', borderRadius:2, width:`${c.porcentaje}%`,
+                        background: activada ? '#4ade80' : c.porcentaje >= 90 ? GOLD : 'rgba(201,168,76,0.5)' }} />
+                    </div>
+                    <span style={{ fontSize:11, fontWeight:700, color: activada ? '#4ade80' : GOLD, minWidth:35 }}>
+                      {Math.round(c.porcentaje)}%
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <button onClick={() => navigate('/admin/jugadores')}
+            style={{ marginTop:10, fontSize:11, color:'#34d399', background:'rgba(52,211,153,0.08)', border:'1px solid rgba(52,211,153,0.25)', borderRadius:4, padding:'4px 12px', cursor:'pointer', fontFamily:'inherit' }}>
+            Ver fichas de jugadores →
+          </button>
+        </div>
+      )}
+
       {/* Alerta zapatos */}
       {shoeAlerts.length > 0 && (
         <div style={{ background:'rgba(248,113,113,0.07)', border:'1px solid rgba(248,113,113,0.3)', borderRadius:8, padding:'12px 16px', marginBottom:16 }}>
@@ -163,10 +233,8 @@ export default function Dashboard() {
                   <div>
                     <div style={{ fontSize:12, color:'#fff', fontWeight:600 }}>{p?.name || '—'}</div>
                     <div style={{ fontSize:10, color:'rgba(255,255,255,0.45)' }}>
-                      {a.dias <= 0
-                        ? <span style={{ color:'#f87171', fontWeight:600 }}>AGOTADO</span>
-                        : <span style={{ color:'#fbbf24' }}>{a.dias} días restantes</span>
-                      }
+                      {a.dias <= 0 ? <span style={{ color:'#f87171', fontWeight:600 }}>AGOTADO</span>
+                        : <span style={{ color:'#fbbf24' }}>{a.dias} días restantes</span>}
                     </div>
                   </div>
                 </div>
@@ -272,7 +340,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── Resumen anual botines ───────────────────────────────────────────── */}
+      {/* Resumen anual botines */}
       <div className="card" style={{ marginBottom:20 }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, flexWrap:'wrap', gap:8 }}>
           <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', fontWeight:600, letterSpacing:1.5 }}>
@@ -281,37 +349,29 @@ export default function Dashboard() {
           <div style={{ display:'flex', gap:6, alignItems:'center' }}>
             {aniosDisponibles.map(y => (
               <button key={y} onClick={() => setShoeAnio(y)}
-                style={{ fontSize:11, padding:'4px 12px', borderRadius:4, cursor:'pointer', fontFamily:'inherit', transition:'all .15s',
-                  background: shoeAnio === y ? GOLD : 'transparent',
-                  color: shoeAnio === y ? '#0f1a3a' : 'rgba(255,255,255,0.45)',
-                  border: shoeAnio === y ? `1px solid ${GOLD}` : '1px solid rgba(201,168,76,0.2)' }}>
+                style={{ fontSize:11, padding:'4px 12px', borderRadius:4, cursor:'pointer', fontFamily:'inherit',
+                  background: shoeAnio===y ? GOLD : 'transparent',
+                  color: shoeAnio===y ? '#0f1a3a' : 'rgba(255,255,255,0.45)',
+                  border: shoeAnio===y ? `1px solid ${GOLD}` : '1px solid rgba(201,168,76,0.2)' }}>
                 {y}
               </button>
             ))}
-            <button onClick={() => navigate('/admin/jugadores')}
-              style={{ fontSize:11, padding:'4px 12px', borderRadius:4, border:`1px solid rgba(201,168,76,0.3)`, background:'rgba(201,168,76,0.08)', color:GOLD, cursor:'pointer', fontFamily:'inherit' }}>
-              Ver Pedidos →
-            </button>
           </div>
         </div>
-
         {Object.keys(shoeResumenByPlayer).length === 0 ? (
           <div style={{ textAlign:'center', color:'rgba(255,255,255,0.25)', fontSize:13, padding:16 }}>
             Sin botines entregados en {shoeAnio}
           </div>
         ) : (
-          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
             {Object.entries(shoeResumenByPlayer)
               .sort(([a],[b]) => (playerMap[a]?.name||'').localeCompare(playerMap[b]?.name||''))
               .map(([pid, res]) => {
                 const p = playerMap[pid]
                 const total = res.elite + res.pro
-                const [expanded, setExpanded] = useState(false)
                 return (
-                  <div key={pid} style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:8, overflow:'hidden' }}>
-                    {/* Fila resumen */}
-                    <div style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', cursor:'pointer', flexWrap:'wrap' }}
-                      onClick={() => setExpanded(e => !e)}>
+                  <div key={pid} style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:8, padding:'10px 14px' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
                       <div style={{ fontWeight:600, color:'#fff', fontSize:13, minWidth:160 }}>{p?.name || '—'}</div>
                       <div style={{ display:'flex', gap:8, flex:1, flexWrap:'wrap' }}>
                         <span style={{ fontSize:11, padding:'2px 8px', borderRadius:10,
@@ -322,50 +382,12 @@ export default function Dashboard() {
                           background:'rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.5)', border:'1px solid rgba(255,255,255,0.1)', fontWeight:600 }}>
                           {res.pro} Pro
                         </span>
-                        <span style={{ fontSize:11, color:'rgba(255,255,255,0.35)' }}>
-                          {total} par{total !== 1 ? 'es' : ''} total
-                        </span>
+                        <span style={{ fontSize:11, color:'rgba(255,255,255,0.35)' }}>{total} par{total!==1?'es':''} total</span>
                       </div>
-                      <span style={{ fontSize:11, color:'rgba(255,255,255,0.3)' }}>{expanded ? '▲' : '▼'} detalle</span>
+                      <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', whiteSpace:'nowrap' }}>
+                        Última entrega: {fmtDate(res.entregas.sort((a,b) => new Date(b.fecha)-new Date(a.fecha))[0]?.fecha)}
+                      </div>
                     </div>
-                    {/* Detalle entregas */}
-                    {expanded && (
-                      <div style={{ borderTop:'1px solid rgba(255,255,255,0.05)', padding:'8px 14px' }}>
-                        <table style={{ width:'100%', fontSize:11, borderCollapse:'collapse' }}>
-                          <thead>
-                            <tr>
-                              {['F. Entrega','Marca','Modelo','Suela','Cat.','Pares'].map(h => (
-                                <th key={h} style={{ textAlign:'left', color:'rgba(255,255,255,0.3)', padding:'4px 6px', borderBottom:'1px solid rgba(255,255,255,0.05)', fontSize:10 }}>{h}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {res.entregas.sort((a,b) => new Date(b.fecha) - new Date(a.fecha)).map((e, i) => (
-                              <tr key={i}>
-                                <td style={{ padding:'5px 6px', color:'rgba(255,255,255,0.5)', whiteSpace:'nowrap' }}>{fmtDate(e.fecha)}</td>
-                                <td style={{ padding:'5px 6px', color:'rgba(255,255,255,0.7)' }}>{MARCAS_LABEL[e.marca] || e.marca}</td>
-                                <td style={{ padding:'5px 6px', color:'rgba(255,255,255,0.6)' }}>{e.modelo || '—'}</td>
-                                <td style={{ padding:'5px 6px' }}>
-                                  <span style={{ fontSize:10, fontWeight:700, padding:'1px 5px', borderRadius:3,
-                                    background: e.suela === 'FG' ? 'rgba(96,165,250,0.15)' : 'rgba(52,211,153,0.15)',
-                                    color: e.suela === 'FG' ? '#60a5fa' : '#34d399' }}>
-                                    {e.suela}
-                                  </span>
-                                </td>
-                                <td style={{ padding:'5px 6px' }}>
-                                  <span style={{ fontSize:10, fontWeight:700, padding:'1px 5px', borderRadius:3,
-                                    background: e.categoria === 'Elite' ? 'rgba(201,168,76,0.15)' : 'rgba(255,255,255,0.06)',
-                                    color: e.categoria === 'Elite' ? GOLD : 'rgba(255,255,255,0.5)' }}>
-                                    {e.categoria}
-                                  </span>
-                                </td>
-                                <td style={{ padding:'5px 6px', color:GOLD, fontWeight:600 }}>{e.pares}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
                   </div>
                 )
               })}

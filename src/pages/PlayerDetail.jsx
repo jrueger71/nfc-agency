@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import ImageCropper from '../components/ImageCropper'
+import PlayerStats from '../components/PlayerStats'
 import { useAuth } from '../App'
 
 function fmt$(n) {
@@ -50,7 +51,7 @@ const INPUT = {
 export default function PlayerDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { session } = useAuth()
+  const { session, userRole } = useAuth()
   const [player, setPlayer] = useState(null)
   const [media, setMedia] = useState([])
   const [loading, setLoading] = useState(true)
@@ -64,6 +65,9 @@ export default function PlayerDetail() {
   const profilePhotoRef = useRef()
   const extraPhotoRef = useRef()
 
+  // Roles que pueden editar stats
+  const canEditStats = session && ['admin', 'agente', 'socio'].includes(userRole)
+
   const load = async () => {
     const [{ data: p }, { data: m }] = await Promise.all([
       supabase.from('players_full_info').select('*').eq('id', id).single(),
@@ -76,15 +80,9 @@ export default function PlayerDetail() {
 
   useEffect(() => { load() }, [id])
 
-  // Handle cropped profile photo save
   const handleCropSave = async (publicUrl) => {
-    console.log('Saving foto_url:', publicUrl, 'for player id:', id)
     const { error } = await supabase.from('players').update({ foto_url: publicUrl }).eq('id', id)
-    if (error) {
-      console.error('Error updating foto_url:', error)
-      alert('Error guardando foto: ' + error.message)
-      return
-    }
+    if (error) { alert('Error guardando foto: ' + error.message); return }
     const existing = media.find(m => m.media_type === 'photo' && m.display_order === 1)
     if (existing) {
       await supabase.from('player_media').update({ url: publicUrl }).eq('id', existing.id)
@@ -95,30 +93,17 @@ export default function PlayerDetail() {
     load()
   }
 
-  // Upload photo to Supabase Storage
   const uploadPhoto = async (file, isProfile = false) => {
     if (!file) return
     setUploading(true)
     setUploadMsg('Subiendo foto...')
     const ext = file.name.split('.').pop().toLowerCase()
     const path = `${id}/${isProfile ? 'profile' : 'gallery'}_${Date.now()}.${ext}`
-
-    const { error } = await supabase.storage
-      .from('player-media')
-      .upload(path, file, { upsert: true })
-
-    if (error) {
-      setUploadMsg('❌ ' + error.message)
-      setUploading(false)
-      return
-    }
-
+    const { error } = await supabase.storage.from('player-media').upload(path, file, { upsert: true })
+    if (error) { setUploadMsg('❌ ' + error.message); setUploading(false); return }
     const { data: { publicUrl } } = supabase.storage.from('player-media').getPublicUrl(path)
-
     if (isProfile) {
-      // Update main profile photo
       await supabase.from('players').update({ foto_url: publicUrl }).eq('id', id)
-      // Update or insert in player_media as profile
       const existing = media.find(m => m.media_type === 'photo' && m.display_order === 1)
       if (existing) {
         await supabase.from('player_media').update({ url: publicUrl }).eq('id', existing.id)
@@ -126,14 +111,10 @@ export default function PlayerDetail() {
         await supabase.from('player_media').insert({ player_id: id, media_type: 'photo', url: publicUrl, display_order: 1 })
       }
     } else {
-      // Gallery photo — find next order
       const photos = media.filter(m => m.media_type === 'photo')
       const nextOrder = photos.length > 0 ? Math.max(...photos.map(p => p.display_order)) + 1 : 2
-      await supabase.from('player_media').insert({
-        player_id: id, media_type: 'photo', url: publicUrl, display_order: nextOrder
-      })
+      await supabase.from('player_media').insert({ player_id: id, media_type: 'photo', url: publicUrl, display_order: nextOrder })
     }
-
     setUploadMsg('✓ Foto subida correctamente')
     setUploading(false)
     load()
@@ -152,8 +133,7 @@ export default function PlayerDetail() {
     setSavingVideo(true)
     const videos = media.filter(m => m.media_type === 'video')
     await supabase.from('player_media').insert({
-      player_id: id, media_type: 'video', url: videoUrl,
-      display_order: videos.length + 1
+      player_id: id, media_type: 'video', url: videoUrl, display_order: videos.length + 1
     })
     setSavingVideo(false)
     setVideoMsg('✓ Video agregado')
@@ -199,7 +179,6 @@ export default function PlayerDetail() {
       {/* Header */}
       <div className="card" style={{ marginBottom:16 }}>
         <div style={{ display:'flex', gap:20, alignItems:'flex-start', flexWrap:'wrap' }}>
-          {/* Profile photo */}
           <div style={{ position:'relative', flexShrink:0 }}>
             <div style={{
               width:100, height:100, borderRadius:'50%', border:`2px solid ${GOLD}`,
@@ -255,7 +234,7 @@ export default function PlayerDetail() {
         </div>
       </div>
 
-      {/* Physical stats */}
+      {/* Stats físicas */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))', gap:10, marginBottom:16 }}>
         {[
           { n: player.height ? player.height+' cm' : '—', l:'ALTURA' },
@@ -270,7 +249,7 @@ export default function PlayerDetail() {
         ))}
       </div>
 
-      {/* Public info — club + transfermarkt */}
+      {/* Info deportiva y Transfermarkt */}
       <div className="grid-2" style={{ marginBottom:16 }}>
         <div className="card">
           <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', fontWeight:600, letterSpacing:1.5, marginBottom:14 }}>INFORMACIÓN DEPORTIVA</div>
@@ -300,9 +279,7 @@ export default function PlayerDetail() {
               🔗 Ver perfil en Transfermarkt
             </a>
           ) : (
-            <div style={{ textAlign:'center', padding:'14px 0', color:'rgba(255,255,255,0.2)', fontSize:13 }}>
-              Sin perfil Transfermarkt
-            </div>
+            <div style={{ textAlign:'center', padding:'14px 0', color:'rgba(255,255,255,0.2)', fontSize:13 }}>Sin perfil Transfermarkt</div>
           )}
           <div style={{ marginTop:10, display:'flex', alignItems:'center', gap:8 }}>
             <div style={{ flex:1, height:1, background:'rgba(255,255,255,0.05)' }}/>
@@ -316,7 +293,28 @@ export default function PlayerDetail() {
         </div>
       </div>
 
-      {/* Gallery — public */}
+      {/* ── ESTADÍSTICAS ─────────────────────────────────────────────────────── */}
+      {(session || player.stats_visible) && (
+        <div className="card" style={{ marginBottom:16, border:`1px solid rgba(201,168,76,0.2)` }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+            <div style={{ fontSize:11, color:GOLD, fontWeight:600, letterSpacing:1.5 }}>
+              ESTADÍSTICAS
+            </div>
+            {!session && player.stats_visible && (
+              <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)', padding:'2px 8px', borderRadius:4, border:'1px solid rgba(255,255,255,0.1)' }}>
+                Vista pública
+              </span>
+            )}
+          </div>
+          <PlayerStats
+            player={player}
+            canEdit={canEditStats}
+            publicFields={!session ? (player.stats_campos_publicos || []) : null}
+          />
+        </div>
+      )}
+
+      {/* Galería */}
       {galleryPhotos.length > 0 && (
         <div style={{ marginBottom:16 }}>
           <div className="section-title">GALERÍA</div>
@@ -339,7 +337,7 @@ export default function PlayerDetail() {
         </div>
       )}
 
-      {/* Videos — public */}
+      {/* Videos */}
       {videos.length > 0 && (
         <div style={{ marginBottom:16 }}>
           <div className="section-title">VIDEOS</div>
@@ -371,22 +369,18 @@ export default function PlayerDetail() {
         </div>
       )}
 
-      {/* Admin media panel */}
+      {/* Panel multimedia admin */}
       {session && (
         <div className="card" style={{ border:`1px solid rgba(201,168,76,0.25)` }}>
           <div style={{ fontSize:11, color:GOLD, fontWeight:600, letterSpacing:1.5, marginBottom:20 }}>
             GESTIÓN DE MULTIMEDIA
           </div>
-
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))', gap:20 }}>
-
-            {/* Profile photo */}
             <div>
               <div style={{ fontSize:13, color:'rgba(255,255,255,0.6)', fontWeight:600, marginBottom:10 }}>📷 Foto de perfil</div>
               {showCropper ? (
                 <ImageCropper
-                  shape="rect"
-                  aspectRatio={3/4}
+                  shape="rect" aspectRatio={3/4}
                   storagePath={`${id}/profile_${Date.now()}.jpg`}
                   label="Seleccionar foto de perfil"
                   onSave={handleCropSave}
@@ -399,12 +393,10 @@ export default function PlayerDetail() {
                       borderRadius:6, padding:14, fontSize:14, color:GOLD, cursor:'pointer', fontFamily:'inherit' }}>
                     ✂️ Subir foto de perfil (3/4)
                   </button>
-                  <div style={{ fontSize:11, color:'rgba(255,255,255,0.25)', marginTop:4 }}>JPG, PNG — formato 3/4 — ideal para foto de cuerpo completo</div>
+                  <div style={{ fontSize:11, color:'rgba(255,255,255,0.25)', marginTop:4 }}>JPG, PNG — formato 3/4</div>
                 </>
               )}
             </div>
-
-            {/* Gallery photos */}
             <div>
               <div style={{ fontSize:13, color:'rgba(255,255,255,0.6)', fontWeight:600, marginBottom:10 }}>
                 🖼 Fotos adicionales ({galleryPhotos.length}/5)
@@ -414,18 +406,15 @@ export default function PlayerDetail() {
                   const files = Array.from(e.target.files).slice(0, 5 - galleryPhotos.length)
                   for (const f of files) await uploadPhoto(f, false)
                 }} />
-              <button
-                onClick={() => extraPhotoRef.current?.click()}
+              <button onClick={() => extraPhotoRef.current?.click()}
                 disabled={uploading || galleryPhotos.length >= 5}
                 style={{ width:'100%', background:'rgba(201,168,76,0.08)', border:'1px dashed rgba(201,168,76,0.35)',
-                  borderRadius:6, padding:14, fontSize:14, color: galleryPhotos.length >= 5 ? 'rgba(255,255,255,0.2)' : GOLD,
+                  borderRadius:6, padding:14, fontSize:14,
+                  color: galleryPhotos.length >= 5 ? 'rgba(255,255,255,0.2)' : GOLD,
                   cursor: galleryPhotos.length >= 5 ? 'not-allowed' : 'pointer', fontFamily:'inherit' }}>
-                {galleryPhotos.length >= 5 ? 'Máximo 5 fotos alcanzado' : uploading ? 'Subiendo...' : '+ Agregar fotos a galería'}
+                {galleryPhotos.length >= 5 ? 'Máximo 5 fotos' : uploading ? 'Subiendo...' : '+ Agregar fotos'}
               </button>
-              <div style={{ fontSize:11, color:'rgba(255,255,255,0.25)', marginTop:4 }}>Puedes seleccionar varias a la vez</div>
             </div>
-
-            {/* Video link */}
             <div>
               <div style={{ fontSize:13, color:'rgba(255,255,255,0.6)', fontWeight:600, marginBottom:10 }}>🎬 Agregar video</div>
               <input style={{ ...INPUT, marginBottom:8 }} value={videoUrl} onChange={e => setVideoUrl(e.target.value)}
@@ -433,7 +422,6 @@ export default function PlayerDetail() {
               <button className="btn-gold" onClick={addVideo} disabled={savingVideo} style={{ width:'100%' }}>
                 {savingVideo ? 'GUARDANDO...' : '+ AGREGAR VIDEO'}
               </button>
-              <div style={{ fontSize:11, color:'rgba(255,255,255,0.25)', marginTop:4 }}>Vimeo o YouTube</div>
               {videoMsg && <div style={{ fontSize:13, color: videoMsg.startsWith('✓') ? '#4ade80':'#f87171', marginTop:6 }}>{videoMsg}</div>}
             </div>
           </div>
