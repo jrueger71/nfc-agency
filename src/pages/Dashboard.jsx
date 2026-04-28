@@ -17,11 +17,11 @@ function fmtDate(d) {
 }
 const GOLD = '#C9A84C'
 const PIE_COLORS = ['#C9A84C','#1B2B5E','#243580','#7a6025','#e8c96a','#555']
-
 const ROL_COLORS = {
   admin: '#f87171', agente: '#C9A84C', socio: '#60a5fa',
   digitador: '#34d399', visor: '#94a3b8',
 }
+const MARCAS_LABEL = { adidas: 'Adidas', nike: 'Nike', skechers: 'Skechers', skechers_w: 'Skechers (M)' }
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -30,6 +30,7 @@ export default function Dashboard() {
   const [agencyContracts, setAgencyContracts] = useState([])
   const [finSummary, setFinSummary] = useState([])
   const [transactions, setTransactions] = useState([])
+  const [shoeOrders, setShoeOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [userRole, setUserRole] = useState(null)
   const [usuarios, setUsuarios] = useState([])
@@ -41,16 +42,17 @@ export default function Dashboard() {
       supabase.from('agency_contracts').select('id,player_id,incorporation_date,contract_date,contract_duration_months,contract_active,contract_pdf_url').order('contract_date', { ascending:false }),
       supabase.from('player_financial_summary').select('player_id,player_name,total_income,total_expenses,balance').order('balance', { ascending:false }),
       supabase.from('transactions').select('id,player_id,transaction_date,type,subtype,description,amount,moneda').order('transaction_date', { ascending:false }).limit(8),
-    ]).then(([p, ci, ac, fs, tx]) => {
+      supabase.from('shoe_orders').select('*').order('fecha_pedido', { ascending:false }),
+    ]).then(([p, ci, ac, fs, tx, so]) => {
       setPlayers(p.data || [])
       setClubInfo(ci.data || [])
       setAgencyContracts(ac.data || [])
       setFinSummary(fs.data || [])
       setTransactions(tx.data || [])
+      setShoeOrders(so.data || [])
       setLoading(false)
     })
 
-    // Get current user role
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
         supabase.from('user_roles').select('role').eq('user_id', user.id).single()
@@ -59,7 +61,6 @@ export default function Dashboard() {
     })
   }, [])
 
-  // Load usuarios only for admin
   useEffect(() => {
     if (userRole === 'admin') {
       supabase.from('user_roles').select('*').order('created_at', { ascending: false })
@@ -80,6 +81,22 @@ export default function Dashboard() {
     return days > 0 && days < 90
   })
 
+  // Alertas de zapatos: último pedido por jugador, calcular agotamiento
+  const playerMap = {}
+  players.forEach(p => { playerMap[p.id] = p })
+
+  const lastOrderByPlayer = {}
+  shoeOrders.forEach(o => {
+    if (!lastOrderByPlayer[o.player_id]) lastOrderByPlayer[o.player_id] = o
+  })
+
+  const shoeAlerts = Object.values(lastOrderByPlayer).map(o => {
+    const agotamiento = new Date(o.fecha_pedido)
+    agotamiento.setMonth(agotamiento.getMonth() + (o.pares * 2))
+    const dias = Math.floor((agotamiento - Date.now()) / (24 * 3600 * 1000))
+    return { ...o, dias, agotamiento }
+  }).filter(o => o.dias <= 30).sort((a, b) => a.dias - b.dias)
+
   const txByMonth = {}
   transactions.forEach(t => {
     const m = t.transaction_date ? new Date(t.transaction_date).toLocaleDateString('es-CL',{month:'short'}) : '?'
@@ -94,9 +111,49 @@ export default function Dashboard() {
 
   return (
     <div className="page">
+      {/* Alertas contratos */}
       {urgentContracts.length > 0 && (
         <div style={{ background:'rgba(201,168,76,0.07)', border:'1px solid rgba(201,168,76,0.3)', borderRadius:8, padding:'12px 16px', fontSize:14, color:GOLD, marginBottom:16 }}>
           ⚠ {urgentContracts.length} contrato(s) de agencia vencen en menos de 90 días
+        </div>
+      )}
+
+      {/* Alertas zapatos */}
+      {shoeAlerts.length > 0 && (
+        <div style={{ background:'rgba(248,113,113,0.07)', border:'1px solid rgba(248,113,113,0.3)', borderRadius:8, padding:'12px 16px', marginBottom:16 }}>
+          <div style={{ fontSize:11, fontWeight:600, color:'#f87171', letterSpacing:1, marginBottom:10 }}>
+            👟 ALERTA DE BOTINES — {shoeAlerts.length} jugador(es) necesitan reposición
+          </div>
+          <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+            {shoeAlerts.map(o => {
+              const p = playerMap[o.player_id]
+              const agotado = o.dias <= 0
+              return (
+                <div key={o.id} style={{
+                  display:'flex', alignItems:'center', gap:8, padding:'6px 12px',
+                  background: agotado ? 'rgba(248,113,113,0.12)' : 'rgba(251,191,36,0.08)',
+                  border: `1px solid ${agotado ? 'rgba(248,113,113,0.3)' : 'rgba(251,191,36,0.25)'}`,
+                  borderRadius:6
+                }}>
+                  <span style={{ fontSize:14 }}>{agotado ? '🔴' : '🟡'}</span>
+                  <div>
+                    <div style={{ fontSize:12, color:'#fff', fontWeight:600 }}>{p?.name || '—'}</div>
+                    <div style={{ fontSize:10, color:'rgba(255,255,255,0.45)' }}>
+                      {MARCAS_LABEL[o.marca] || o.marca} · {o.categoria} {o.suela}
+                      {agotado
+                        ? <span style={{ color:'#f87171', fontWeight:600 }}> · AGOTADO</span>
+                        : <span style={{ color:'#fbbf24' }}> · {o.dias}d restantes</span>
+                      }
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <button onClick={() => navigate('/admin/jugadores')}
+            style={{ marginTop:10, fontSize:11, color:GOLD, background:'rgba(201,168,76,0.1)', border:'1px solid rgba(201,168,76,0.3)', borderRadius:4, padding:'4px 12px', cursor:'pointer', fontFamily:'inherit' }}>
+            Ir a Pedidos →
+          </button>
         </div>
       )}
 
@@ -200,8 +257,7 @@ export default function Dashboard() {
                 return (
                   <tr key={c.id}>
                     <td style={{ color:'#fff', fontWeight:500 }}>{p?.name||'—'}</td>
-                    <td>{c.club_name||'—'}</td>
-                    <td>{c.position||'—'}</td>
+                    <td>{c.club_name||'—'}</td><td>{c.position||'—'}</td>
                     <td>{fmt$(c.salary)}</td>
                     <td>{c.commission_percentage ? c.commission_percentage+'%' : fmt$(c.commission_fixed)}</td>
                     <td>{c.transfermarkt_valuation||'—'}</td>
@@ -231,8 +287,7 @@ export default function Dashboard() {
                 return (
                   <tr key={c.id}>
                     <td style={{ color:'#fff', fontWeight:500 }}>{p?.name||'—'}</td>
-                    <td>{fmtDate(c.incorporation_date)}</td>
-                    <td>{fmtDate(c.contract_date)}</td>
+                    <td>{fmtDate(c.incorporation_date)}</td><td>{fmtDate(c.contract_date)}</td>
                     <td>{c.contract_duration_months ? c.contract_duration_months+' meses' : '—'}</td>
                     <td>{c.contract_pdf_url ? <a href={c.contract_pdf_url} target="_blank" rel="noreferrer" style={{ color:GOLD }}>Ver PDF</a> : '—'}</td>
                     <td><span className={`pill ${pc}`}>{es}</span></td>
@@ -245,13 +300,10 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Widget usuarios — solo admin */}
       {userRole === 'admin' && (
         <div className="card" style={{ marginBottom:20, border:'1px solid rgba(201,168,76,0.15)' }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
-            <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', fontWeight:600, letterSpacing:1.5 }}>
-              USUARIOS DEL SISTEMA
-            </div>
+            <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', fontWeight:600, letterSpacing:1.5 }}>USUARIOS DEL SISTEMA</div>
             <button onClick={() => navigate('/admin/usuarios')}
               style={{ fontSize:11, padding:'4px 12px', borderRadius:4, border:`1px solid rgba(201,168,76,0.3)`,
                 background:'rgba(201,168,76,0.08)', color:GOLD, cursor:'pointer', fontFamily:'inherit' }}>
@@ -259,9 +311,7 @@ export default function Dashboard() {
             </button>
           </div>
           <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
-            {usuarios.length === 0 && (
-              <div style={{ fontSize:12, color:'rgba(255,255,255,0.25)' }}>Sin usuarios registrados</div>
-            )}
+            {!usuarios.length && <div style={{ fontSize:12, color:'rgba(255,255,255,0.25)' }}>Sin usuarios registrados</div>}
             {usuarios.map(u => (
               <div key={u.user_id} style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 12px',
                 background:'rgba(255,255,255,0.04)', borderRadius:6, border:'1px solid rgba(255,255,255,0.06)' }}>
