@@ -30,12 +30,18 @@ const EDIT_BTN = { fontSize: 10, padding: '3px 8px', borderRadius: 3, border: '1
 const GHOST_BTN = { fontSize: 10, padding: '3px 8px', borderRadius: 3, border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontFamily: 'inherit' }
 const INPUT = { width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 5, padding: '8px 12px', fontSize: 13, color: '#fff', fontFamily: 'inherit', outline: 'none' }
 const LABEL = { fontSize: 10, color: 'rgba(255,255,255,0.45)', letterSpacing: 1, display: 'block', marginBottom: 4, fontWeight: 600 }
-
-const MARCAS = ['adidas', 'nike', 'skechers', 'skechers_w']
 const MARCAS_LABEL = { adidas: 'Adidas', nike: 'Nike', skechers: 'Skechers', skechers_w: 'Skechers (M)' }
+const MARCAS = ['adidas', 'nike', 'skechers', 'skechers_w']
 const SUELAS = ['FG', 'SG']
 const CATEGORIAS = ['Elite', 'Pro']
 const EMPTY_ITEM = () => ({ player_id: '', marca: 'adidas', uk: '', modelo: '', suela: 'FG', categoria: 'Elite', pares: 1 })
+
+const TIPO_COLORS = {
+  'Contrato': GOLD,
+  'Renovación': '#60a5fa',
+  'Préstamo': '#34d399',
+  'Cesión': '#f87171',
+}
 
 // ─── PedidosTab ───────────────────────────────────────────────────────────────
 function PedidosTab({ players }) {
@@ -47,7 +53,6 @@ function PedidosTab({ players }) {
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
   const [filterEstado, setFilterEstado] = useState('todos')
-
   const [fechaPedido, setFechaPedido] = useState(new Date().toISOString().split('T')[0])
   const [notasPedido, setNotasPedido] = useState('')
   const [items, setItems] = useState([EMPTY_ITEM()])
@@ -88,48 +93,25 @@ function PedidosTab({ players }) {
     setItems([EMPTY_ITEM()])
     setFechaPedido(new Date().toISOString().split('T')[0])
     setNotasPedido('')
-    setShowForm(true)
-    setMsg('')
+    setShowForm(true); setMsg('')
   }
 
   const handleSave = async () => {
     const valid = items.filter(i => i.player_id && i.uk)
     if (!valid.length) { setMsg('Agrega al menos un jugador con talla UK'); return }
     setSaving(true); setMsg('')
-
-    const { data: grp, error: grpErr } = await supabase
-      .from('shoe_order_groups')
-      .insert({ fecha_pedido: fechaPedido, notas: notasPedido || null })
-      .select().single()
-
+    const { data: grp, error: grpErr } = await supabase.from('shoe_order_groups')
+      .insert({ fecha_pedido: fechaPedido, notas: notasPedido || null }).select().single()
     if (grpErr) { setSaving(false); setMsg('Error: ' + grpErr.message); return }
-
     const rows = valid.map(i => {
       const conv = getConv(i.marca, i.uk)
-      return {
-        group_id: grp.id,
-        player_id: i.player_id,
-        marca: i.marca,
-        uk: parseFloat(i.uk),
-        us: conv?.us || null,
-        eu: conv?.eu || null,
-        cms: conv?.cms || null,
-        modelo: i.modelo || null,
-        suela: i.suela,
-        categoria: i.categoria,
-        pares: parseInt(i.pares) || 1,
-        fecha_pedido: fechaPedido,
-        notas: notasPedido || null,
-        estado: 'pendiente',
-      }
+      return { group_id: grp.id, player_id: i.player_id, marca: i.marca, uk: parseFloat(i.uk), us: conv?.us || null, eu: conv?.eu || null, cms: conv?.cms || null, modelo: i.modelo || null, suela: i.suela, categoria: i.categoria, pares: parseInt(i.pares) || 1, fecha_pedido: fechaPedido, notas: notasPedido || null, estado: 'pendiente' }
     })
-
     const { error } = await supabase.from('shoe_orders').insert(rows)
     setSaving(false)
     if (error) { setMsg('Error: ' + error.message); return }
     setMsg(`✓ Pedido guardado — ${rows.length} item(s) pendientes`)
-    setShowForm(false)
-    loadOrders()
+    setShowForm(false); loadOrders()
     setTimeout(() => setMsg(''), 4000)
   }
 
@@ -163,7 +145,6 @@ function PedidosTab({ players }) {
     return matchSearch && matchEstado
   })
 
-  // Agrupar por group_id
   const groupMap = {}
   filtered.forEach(o => {
     const key = o.group_id || o.id
@@ -178,174 +159,72 @@ function PedidosTab({ players }) {
         <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontWeight: 600, letterSpacing: 1.5 }}>PEDIDOS DE BOTINES</div>
         <button className="btn-gold" onClick={openNew}>+ NUEVO PEDIDO</button>
       </div>
-
-      {msg && (
-        <div style={{ marginBottom: 12, fontSize: 13, padding: '8px 12px', borderRadius: 5,
-          background: msg.startsWith('✓') ? 'rgba(74,222,128,0.08)' : 'rgba(248,113,113,0.08)',
-          border: `1px solid ${msg.startsWith('✓') ? 'rgba(74,222,128,0.2)' : 'rgba(248,113,113,0.2)'}`,
-          color: msg.startsWith('✓') ? '#4ade80' : '#f87171' }}>
-          {msg}
-        </div>
-      )}
-
-      {/* Formulario */}
+      {msg && <div style={{ marginBottom: 12, fontSize: 13, padding: '8px 12px', borderRadius: 5, background: msg.startsWith('✓') ? 'rgba(74,222,128,0.08)' : 'rgba(248,113,113,0.08)', border: `1px solid ${msg.startsWith('✓') ? 'rgba(74,222,128,0.2)' : 'rgba(248,113,113,0.2)'}`, color: msg.startsWith('✓') ? '#4ade80' : '#f87171' }}>{msg}</div>}
       {showForm && (
         <div className="card" style={{ marginBottom: 20, border: '1px solid rgba(201,168,76,0.25)' }}>
           <div style={{ fontSize: 11, color: GOLD, fontWeight: 600, letterSpacing: 1.5, marginBottom: 16 }}>NUEVO PEDIDO</div>
-
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12, marginBottom: 20 }}>
-            <div>
-              <label style={LABEL}>FECHA DEL PEDIDO</label>
-              <input style={INPUT} type="date" value={fechaPedido} onChange={e => setFechaPedido(e.target.value)} />
-            </div>
-            <div>
-              <label style={LABEL}>NOTAS</label>
-              <input style={INPUT} value={notasPedido} onChange={e => setNotasPedido(e.target.value)} placeholder="Ej: Compra temporada 2026..." />
-            </div>
+            <div><label style={LABEL}>FECHA DEL PEDIDO</label><input style={INPUT} type="date" value={fechaPedido} onChange={e => setFechaPedido(e.target.value)} /></div>
+            <div><label style={LABEL}>NOTAS</label><input style={INPUT} value={notasPedido} onChange={e => setNotasPedido(e.target.value)} placeholder="Ej: Compra temporada 2026..." /></div>
           </div>
-
-          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontWeight: 600, letterSpacing: 1.5, marginBottom: 10 }}>
-            JUGADORES — {items.length} item(s)
-          </div>
-
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontWeight: 600, letterSpacing: 1.5, marginBottom: 10 }}>JUGADORES — {items.length} item(s)</div>
           {items.map((item, idx) => {
             const conv = getConv(item.marca, item.uk)
             return (
               <div key={idx} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: 12, marginBottom: 10 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                   <span style={{ fontSize: 11, color: GOLD, fontWeight: 600 }}>ITEM {idx + 1}</span>
-                  {items.length > 1 && (
-                    <button onClick={() => removeItem(idx)}
-                      style={{ fontSize: 10, color: '#f87171', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-                      ✕ Quitar
-                    </button>
-                  )}
+                  {items.length > 1 && <button onClick={() => removeItem(idx)} style={{ fontSize: 10, color: '#f87171', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>✕ Quitar</button>}
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(155px, 1fr))', gap: 10 }}>
                   <div style={{ gridColumn: '1 / -1' }}>
                     <label style={LABEL}>JUGADOR</label>
                     <select style={INPUT} value={item.player_id} onChange={e => updateItem(idx, 'player_id', e.target.value)}>
                       <option value="">Seleccionar...</option>
-                      {players.sort((a, b) => a.name?.localeCompare(b.name)).map(p => (
-                        <option key={p.id} value={p.id}>{p.name}{p.shoe_size ? ` (UK ${p.shoe_size})` : ''}</option>
-                      ))}
+                      {players.sort((a, b) => a.name?.localeCompare(b.name)).map(p => <option key={p.id} value={p.id}>{p.name}{p.shoe_size ? ` (UK ${p.shoe_size})` : ''}</option>)}
                     </select>
                   </div>
-                  <div>
-                    <label style={LABEL}>MARCA</label>
-                    <select style={INPUT} value={item.marca} onChange={e => updateItem(idx, 'marca', e.target.value)}>
-                      {MARCAS.map(m => <option key={m} value={m}>{MARCAS_LABEL[m]}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={LABEL}>TALLA UK</label>
-                    <input style={INPUT} type="number" step="0.5" value={item.uk}
-                      onChange={e => updateItem(idx, 'uk', e.target.value)} placeholder="8.0" />
-                  </div>
-                  {conv && (
-                    <div style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 6, padding: '8px 12px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                      <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', marginBottom: 3 }}>CONV.</div>
-                      <div style={{ display: 'flex', gap: 8, fontSize: 12 }}>
-                        <span style={{ color: GOLD }}>US {conv.us}</span>
-                        <span style={{ color: 'rgba(255,255,255,0.4)' }}>EU {conv.eu}</span>
-                      </div>
-                    </div>
-                  )}
-                  <div>
-                    <label style={LABEL}>MODELO</label>
-                    <input style={INPUT} value={item.modelo} onChange={e => updateItem(idx, 'modelo', e.target.value)} placeholder="Predator..." />
-                  </div>
-                  <div>
-                    <label style={LABEL}>SUELA</label>
-                    <select style={INPUT} value={item.suela} onChange={e => updateItem(idx, 'suela', e.target.value)}>
-                      {SUELAS.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={LABEL}>CATEGORÍA</label>
-                    <select style={INPUT} value={item.categoria} onChange={e => updateItem(idx, 'categoria', e.target.value)}>
-                      {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={LABEL}>PARES</label>
-                    <input style={INPUT} type="number" min="1" max="10" value={item.pares}
-                      onChange={e => updateItem(idx, 'pares', e.target.value)} />
-                  </div>
+                  <div><label style={LABEL}>MARCA</label><select style={INPUT} value={item.marca} onChange={e => updateItem(idx, 'marca', e.target.value)}>{MARCAS.map(m => <option key={m} value={m}>{MARCAS_LABEL[m]}</option>)}</select></div>
+                  <div><label style={LABEL}>TALLA UK</label><input style={INPUT} type="number" step="0.5" value={item.uk} onChange={e => updateItem(idx, 'uk', e.target.value)} placeholder="8.0" /></div>
+                  {conv && <div style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 6, padding: '8px 12px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}><div style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', marginBottom: 3 }}>CONV.</div><div style={{ display: 'flex', gap: 8, fontSize: 12 }}><span style={{ color: GOLD }}>US {conv.us}</span><span style={{ color: 'rgba(255,255,255,0.4)' }}>EU {conv.eu}</span></div></div>}
+                  <div><label style={LABEL}>MODELO</label><input style={INPUT} value={item.modelo} onChange={e => updateItem(idx, 'modelo', e.target.value)} placeholder="Predator..." /></div>
+                  <div><label style={LABEL}>SUELA</label><select style={INPUT} value={item.suela} onChange={e => updateItem(idx, 'suela', e.target.value)}>{SUELAS.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
+                  <div><label style={LABEL}>CATEGORÍA</label><select style={INPUT} value={item.categoria} onChange={e => updateItem(idx, 'categoria', e.target.value)}>{CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
+                  <div><label style={LABEL}>PARES</label><input style={INPUT} type="number" min="1" max="10" value={item.pares} onChange={e => updateItem(idx, 'pares', e.target.value)} /></div>
                 </div>
               </div>
             )
           })}
-
-          <button onClick={addItem}
-            style={{ width: '100%', padding: 8, marginBottom: 16, fontSize: 12, color: GOLD,
-              background: 'rgba(201,168,76,0.06)', border: '1px dashed rgba(201,168,76,0.3)',
-              borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit' }}>
-            + Agregar otro jugador
-          </button>
-
+          <button onClick={addItem} style={{ width: '100%', padding: 8, marginBottom: 16, fontSize: 12, color: GOLD, background: 'rgba(201,168,76,0.06)', border: '1px dashed rgba(201,168,76,0.3)', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit' }}>+ Agregar otro jugador</button>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <button className="btn-gold" onClick={handleSave} disabled={saving}>
-              {saving ? 'GUARDANDO...' : `GUARDAR PEDIDO (${items.filter(i => i.player_id && i.uk).length} items)`}
-            </button>
+            <button className="btn-gold" onClick={handleSave} disabled={saving}>{saving ? 'GUARDANDO...' : `GUARDAR PEDIDO (${items.filter(i => i.player_id && i.uk).length} items)`}</button>
             <button className="btn-ghost" onClick={() => setShowForm(false)}>CANCELAR</button>
             <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>Se guardará como PENDIENTE</span>
           </div>
         </div>
       )}
-
-      {/* Filtros */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-        <input value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Buscar jugador..." style={{ ...INPUT, width: 200 }} />
-        {['todos', 'pendiente', 'entregado'].map(e => (
-          <button key={e} onClick={() => setFilterEstado(e)}
-            style={{ ...TAB_STYLE(filterEstado === e), padding: '5px 14px' }}>
-            {e.toUpperCase()}
-          </button>
-        ))}
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar jugador..." style={{ ...INPUT, width: 200 }} />
+        {['todos', 'pendiente', 'entregado'].map(e => <button key={e} onClick={() => setFilterEstado(e)} style={{ ...TAB_STYLE(filterEstado === e), padding: '5px 14px' }}>{e.toUpperCase()}</button>)}
       </div>
-
-      {/* Pedidos agrupados */}
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: 40, color: GOLD, fontFamily: 'Bebas Neue', letterSpacing: 2 }}>CARGANDO...</div>
-      ) : groupList.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', color: 'rgba(255,255,255,0.25)', padding: 32 }}>Sin pedidos registrados</div>
-      ) : (
-        groupList.map((grp, gi) => {
+      {loading ? <div style={{ textAlign: 'center', padding: 40, color: GOLD, fontFamily: 'Bebas Neue', letterSpacing: 2 }}>CARGANDO...</div>
+        : groupList.length === 0 ? <div className="card" style={{ textAlign: 'center', color: 'rgba(255,255,255,0.25)', padding: 32 }}>Sin pedidos registrados</div>
+        : groupList.map((grp, gi) => {
           const allOk = grp.items.every(i => i.estado === 'entregado')
           const pendientes = grp.items.filter(i => i.estado === 'pendiente').length
           return (
             <div key={gi} className="card" style={{ marginBottom: 12, border: `1px solid ${allOk ? 'rgba(74,222,128,0.15)' : 'rgba(201,168,76,0.15)'}` }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <span style={{ fontFamily: 'Bebas Neue', fontSize: 13, color: GOLD, letterSpacing: 1 }}>
-                    PEDIDO {fmtDate(grp.fecha)}
-                  </span>
-                  <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>
-                    {grp.items.length} item(s) · {grp.items.reduce((a, i) => a + (i.pares || 0), 0)} pares
-                  </span>
-                  <span className={`pill ${allOk ? 'pill-ok' : 'pill-warn'}`}>
-                    {allOk ? '✓ ENTREGADO' : `${pendientes} PENDIENTE(S)`}
-                  </span>
+                  <span style={{ fontFamily: 'Bebas Neue', fontSize: 13, color: GOLD, letterSpacing: 1 }}>PEDIDO {fmtDate(grp.fecha)}</span>
+                  <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>{grp.items.length} item(s) · {grp.items.reduce((a, i) => a + (i.pares || 0), 0)} pares</span>
+                  <span className={`pill ${allOk ? 'pill-ok' : 'pill-warn'}`}>{allOk ? '✓ ENTREGADO' : `${pendientes} PENDIENTE(S)`}</span>
                 </div>
-                {pendientes > 0 && grp.group_id && (
-                  <button onClick={() => handleEntregarGrupo(grp.group_id)}
-                    style={{ fontSize: 10, padding: '4px 10px', borderRadius: 4, border: '1px solid rgba(74,222,128,0.4)', background: 'rgba(74,222,128,0.08)', color: '#4ade80', cursor: 'pointer', fontFamily: 'inherit' }}>
-                    ✓ Marcar todo como entregado
-                  </button>
-                )}
+                {pendientes > 0 && grp.group_id && <button onClick={() => handleEntregarGrupo(grp.group_id)} style={{ fontSize: 10, padding: '4px 10px', borderRadius: 4, border: '1px solid rgba(74,222,128,0.4)', background: 'rgba(74,222,128,0.08)', color: '#4ade80', cursor: 'pointer', fontFamily: 'inherit' }}>✓ Marcar todo entregado</button>}
               </div>
-
               <div style={{ overflowX: 'auto' }}>
                 <table>
-                  <thead>
-                    <tr>
-                      <th>Jugador</th><th>Marca</th><th>UK</th><th>US</th><th>EU</th>
-                      <th>Modelo</th><th>Suela</th><th>Cat.</th><th>Pares</th>
-                      <th>Estado</th><th>F. Entrega</th><th>Acc.</th>
-                    </tr>
-                  </thead>
+                  <thead><tr><th>Jugador</th><th>Marca</th><th>UK</th><th>US</th><th>EU</th><th>Modelo</th><th>Suela</th><th>Cat.</th><th>Pares</th><th>Estado</th><th>F.Entrega</th><th>Acc.</th></tr></thead>
                   <tbody>
                     {grp.items.map(o => {
                       const p = playerMap[o.player_id]
@@ -354,48 +233,17 @@ function PedidosTab({ players }) {
                           <td style={{ color: '#fff', fontWeight: 500 }}>{p?.name || '—'}</td>
                           <td>{MARCAS_LABEL[o.marca] || o.marca}</td>
                           <td style={{ color: GOLD, fontWeight: 600 }}>{o.uk}</td>
-                          <td>{o.us || '—'}</td>
-                          <td>{o.eu || '—'}</td>
+                          <td>{o.us || '—'}</td><td>{o.eu || '—'}</td>
                           <td>{o.modelo || '—'}</td>
-                          <td>
-                            <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
-                              background: o.suela === 'FG' ? 'rgba(96,165,250,0.15)' : 'rgba(52,211,153,0.15)',
-                              color: o.suela === 'FG' ? '#60a5fa' : '#34d399',
-                              border: `1px solid ${o.suela === 'FG' ? 'rgba(96,165,250,0.3)' : 'rgba(52,211,153,0.3)'}` }}>
-                              {o.suela}
-                            </span>
-                          </td>
-                          <td>
-                            <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
-                              background: o.categoria === 'Elite' ? 'rgba(201,168,76,0.15)' : 'rgba(255,255,255,0.06)',
-                              color: o.categoria === 'Elite' ? GOLD : 'rgba(255,255,255,0.5)',
-                              border: `1px solid ${o.categoria === 'Elite' ? 'rgba(201,168,76,0.3)' : 'rgba(255,255,255,0.1)'}` }}>
-                              {o.categoria}
-                            </span>
-                          </td>
+                          <td><span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: o.suela === 'FG' ? 'rgba(96,165,250,0.15)' : 'rgba(52,211,153,0.15)', color: o.suela === 'FG' ? '#60a5fa' : '#34d399', border: `1px solid ${o.suela === 'FG' ? 'rgba(96,165,250,0.3)' : 'rgba(52,211,153,0.3)'}` }}>{o.suela}</span></td>
+                          <td><span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: o.categoria === 'Elite' ? 'rgba(201,168,76,0.15)' : 'rgba(255,255,255,0.06)', color: o.categoria === 'Elite' ? GOLD : 'rgba(255,255,255,0.5)', border: `1px solid ${o.categoria === 'Elite' ? 'rgba(201,168,76,0.3)' : 'rgba(255,255,255,0.1)'}` }}>{o.categoria}</span></td>
                           <td style={{ textAlign: 'center' }}>{o.pares}</td>
-                          <td>
-                            <span className={`pill ${o.estado === 'entregado' ? 'pill-ok' : 'pill-warn'}`}>
-                              {o.estado === 'entregado' ? '✓' : 'PEND.'}
-                            </span>
-                          </td>
-                          <td style={{ whiteSpace: 'nowrap', fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>
-                            {o.fecha_entrega ? fmtDate(o.fecha_entrega) : '—'}
-                          </td>
-                          <td>
-                            <div style={{ display: 'flex', gap: 4 }}>
-                              {o.estado === 'pendiente' && (
-                                <button onClick={() => handleEntregar(o.id)}
-                                  style={{ fontSize: 10, padding: '3px 6px', borderRadius: 3, border: '1px solid rgba(74,222,128,0.3)', background: 'transparent', color: '#4ade80', cursor: 'pointer', fontFamily: 'inherit' }}>
-                                  ✓
-                                </button>
-                              )}
-                              <button onClick={() => handleDelete(o.id)}
-                                style={{ fontSize: 10, padding: '3px 6px', borderRadius: 3, border: '1px solid rgba(248,113,113,0.3)', background: 'transparent', color: '#f87171', cursor: 'pointer', fontFamily: 'inherit' }}>
-                                ✕
-                              </button>
-                            </div>
-                          </td>
+                          <td><span className={`pill ${o.estado === 'entregado' ? 'pill-ok' : 'pill-warn'}`}>{o.estado === 'entregado' ? '✓' : 'PEND.'}</span></td>
+                          <td style={{ whiteSpace: 'nowrap', fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>{o.fecha_entrega ? fmtDate(o.fecha_entrega) : '—'}</td>
+                          <td><div style={{ display: 'flex', gap: 4 }}>
+                            {o.estado === 'pendiente' && <button onClick={() => handleEntregar(o.id)} style={{ fontSize: 10, padding: '3px 6px', borderRadius: 3, border: '1px solid rgba(74,222,128,0.3)', background: 'transparent', color: '#4ade80', cursor: 'pointer', fontFamily: 'inherit' }}>✓</button>}
+                            <button onClick={() => handleDelete(o.id)} style={{ fontSize: 10, padding: '3px 6px', borderRadius: 3, border: '1px solid rgba(248,113,113,0.3)', background: 'transparent', color: '#f87171', cursor: 'pointer', fontFamily: 'inherit' }}>✕</button>
+                          </div></td>
                         </tr>
                       )
                     })}
@@ -404,24 +252,12 @@ function PedidosTab({ players }) {
               </div>
             </div>
           )
-        })
-      )}
-
-      {/* Tabla referencia tallas */}
+        })}
       <div className="card" style={{ marginTop: 16 }}>
-        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontWeight: 600, letterSpacing: 1.5, marginBottom: 12 }}>
-          TALLAS POR JUGADOR
-        </div>
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontWeight: 600, letterSpacing: 1.5, marginBottom: 12 }}>TALLAS POR JUGADOR</div>
         <div style={{ overflowX: 'auto' }}>
           <table>
-            <thead>
-              <tr>
-                <th>Jugador</th><th>UK</th>
-                <th>Adidas US</th><th>Adidas EU</th>
-                <th>Nike US</th><th>Nike EU</th>
-                <th>Skechers US</th><th>Skechers EU</th>
-              </tr>
-            </thead>
+            <thead><tr><th>Jugador</th><th>UK</th><th>Adidas US</th><th>Adidas EU</th><th>Nike US</th><th>Nike EU</th><th>Skechers US</th><th>Skechers EU</th></tr></thead>
             <tbody>
               {players.filter(p => p.shoe_size).sort((a, b) => a.name?.localeCompare(b.name)).map(p => {
                 const uk = parseFloat(p.shoe_size)
@@ -439,11 +275,7 @@ function PedidosTab({ players }) {
                   </tr>
                 )
               })}
-              {!players.filter(p => p.shoe_size).length && (
-                <tr><td colSpan={8} style={{ textAlign: 'center', color: 'rgba(255,255,255,0.25)', padding: 16 }}>
-                  Sin tallas — edita cada jugador para agregar su talla UK
-                </td></tr>
-              )}
+              {!players.filter(p => p.shoe_size).length && <tr><td colSpan={8} style={{ textAlign: 'center', color: 'rgba(255,255,255,0.25)', padding: 16 }}>Sin tallas registradas</td></tr>}
             </tbody>
           </table>
         </div>
@@ -456,24 +288,25 @@ function PedidosTab({ players }) {
 export default function PlayersAdmin() {
   const navigate = useNavigate()
   const [players, setPlayers] = useState([])
-  const [clubInfo, setClubInfo] = useState([])
+  const [clubContracts, setClubContracts] = useState([])
   const [agencyContracts, setAgencyContracts] = useState([])
   const [transactions, setTransactions] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [tab, setTab] = useState('players')
   const [modal, setModal] = useState(null)
+  const [expandedPlayer, setExpandedPlayer] = useState(null)
 
   const load = async () => {
     setLoading(true)
-    const [p, ci, ac, tx] = await Promise.all([
+    const [p, cc, ac, tx] = await Promise.all([
       supabase.from('players').select('*').order('name'),
-      supabase.from('club_info').select('*'),
+      supabase.from('club_contracts').select('*').order('fecha_inicio', { ascending: false }),
       supabase.from('agency_contracts').select('*,players(name)').order('contract_date', { ascending: false }),
       supabase.from('transactions').select('*,players(name)').order('transaction_date', { ascending: false }),
     ])
     setPlayers(p.data || [])
-    setClubInfo(ci.data || [])
+    setClubContracts(cc.data || [])
     setAgencyContracts(ac.data || [])
     setTransactions(tx.data || [])
     setLoading(false)
@@ -481,8 +314,12 @@ export default function PlayersAdmin() {
 
   useEffect(() => { load() }, [])
 
-  const clubMap = {}
-  clubInfo.forEach(c => { clubMap[c.player_id] = c })
+  // Contrato activo más reciente por jugador (para la tabla Plantel)
+  const activeClubMap = {}
+  clubContracts.forEach(c => {
+    if (!activeClubMap[c.player_id] && c.contract_active) activeClubMap[c.player_id] = c
+  })
+
   const filtered = players.filter(p =>
     p.name?.toLowerCase().includes(search.toLowerCase()) || p.rut?.includes(search)
   )
@@ -519,12 +356,13 @@ export default function PlayersAdmin() {
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
         <button style={TAB_STYLE(tab === 'players')} onClick={() => setTab('players')}>Plantel ({players.length})</button>
-        <button style={TAB_STYLE(tab === 'contracts')} onClick={() => setTab('contracts')}>Contratos ({clubInfo.length + agencyContracts.length})</button>
+        <button style={TAB_STYLE(tab === 'contracts')} onClick={() => setTab('contracts')}>Contratos ({clubContracts.length + agencyContracts.length})</button>
         <button style={TAB_STYLE(tab === 'transactions')} onClick={() => setTab('transactions')}>Transacciones ({transactions.length})</button>
         <button style={TAB_STYLE(tab === 'docs')} onClick={() => setTab('docs')}>Docs Especiales</button>
         <button style={TAB_STYLE(tab === 'pedidos')} onClick={() => setTab('pedidos')}>👟 Pedidos</button>
       </div>
 
+      {/* PLANTEL */}
       {tab === 'players' && (
         <>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por nombre o RUT..."
@@ -540,7 +378,7 @@ export default function PlayersAdmin() {
               </thead>
               <tbody>
                 {filtered.map(p => {
-                  const ci = clubMap[p.id] || {}
+                  const ci = activeClubMap[p.id] || {}
                   return (
                     <tr key={p.id}>
                       <td style={{ color: '#fff', fontWeight: 500 }}>{p.name}</td>
@@ -554,18 +392,15 @@ export default function PlayersAdmin() {
                       <td><span className={`pill ${ci.contract_active ? 'pill-ok' : 'pill-off'}`}>{ci.contract_active ? 'ACTIVO' : '—'}</span></td>
                       <td>
                         <button onClick={async () => { await supabase.from('players').update({ mostrar_en_landing: !p.mostrar_en_landing }).eq('id', p.id); load() }}
-                          style={{ fontSize: 10, padding: '3px 8px', borderRadius: 3, cursor: 'pointer', fontFamily: 'inherit',
-                            border: p.mostrar_en_landing ? '1px solid rgba(74,222,128,0.4)' : '1px solid rgba(255,255,255,0.1)',
-                            background: p.mostrar_en_landing ? 'rgba(74,222,128,0.1)' : 'transparent',
-                            color: p.mostrar_en_landing ? '#4ade80' : 'rgba(255,255,255,0.3)' }}>
+                          style={{ fontSize: 10, padding: '3px 8px', borderRadius: 3, cursor: 'pointer', fontFamily: 'inherit', border: p.mostrar_en_landing ? '1px solid rgba(74,222,128,0.4)' : '1px solid rgba(255,255,255,0.1)', background: p.mostrar_en_landing ? 'rgba(74,222,128,0.1)' : 'transparent', color: p.mostrar_en_landing ? '#4ade80' : 'rgba(255,255,255,0.3)' }}>
                           {p.mostrar_en_landing ? '✓ VISIBLE' : 'OCULTO'}
                         </button>
                       </td>
                       <td>
                         <div style={{ display: 'flex', gap: 4 }}>
                           <button style={EDIT_BTN} onClick={() => setModal({ type: 'player', data: p })}>Editar</button>
-                          <button style={GHOST_BTN} onClick={() => setModal({ type: 'club', data: ci.id ? ci : null, playerId: p.id })}>Club</button>
-                          <button style={GHOST_BTN} onClick={() => setModal({ type: 'agency', data: null, playerId: p.id, playerName: p.name })}>Agencia</button>
+                          <button style={GHOST_BTN} onClick={() => setModal({ type: 'club', data: null, playerId: p.id, playerName: p.name })}>+ Club</button>
+                          <button style={GHOST_BTN} onClick={() => setModal({ type: 'agency', data: null, playerId: p.id, playerName: p.name })}>+ Agencia</button>
                           <button onClick={() => navigate(`/admin/documentos/${p.id}`)}
                             style={{ fontSize: 10, padding: '3px 8px', borderRadius: 3, border: '1px solid rgba(201,168,76,0.4)', background: 'rgba(201,168,76,0.1)', color: GOLD, cursor: 'pointer', fontFamily: 'inherit' }}>
                             📄 Docs
@@ -582,60 +417,142 @@ export default function PlayersAdmin() {
         </>
       )}
 
+      {/* CONTRATOS — historial por jugador */}
       {tab === 'contracts' && (
         <>
-          <div className="section-title">CONTRATOS CON CLUBES</div>
-          <div className="card" style={{ overflowX: 'auto', marginBottom: 20 }}>
-            <table>
-              <thead><tr><th>Jugador</th><th>Club</th><th>Posición</th><th>Salario</th><th>Comisión</th><th>TM</th><th>Estado</th><th>Acción</th></tr></thead>
-              <tbody>
-                {clubInfo.map(c => {
-                  const p = players.find(x => x.id === c.player_id)
-                  return (
-                    <tr key={c.id}>
-                      <td style={{ color: '#fff', fontWeight: 500 }}>{p?.name || '—'}</td>
-                      <td>{c.club_name || '—'}</td><td>{c.position || '—'}</td>
-                      <td>{fmt$(c.salary)}</td>
-                      <td>{c.commission_percentage ? c.commission_percentage + '%' : fmt$(c.commission_fixed)}</td>
-                      <td>{c.transfermarkt_valuation || '—'}</td>
-                      <td><span className={`pill ${c.contract_active ? 'pill-ok' : 'pill-urg'}`}>{c.contract_active ? 'VIGENTE' : 'INACTIVO'}</span></td>
-                      <td><button style={EDIT_BTN} onClick={() => setModal({ type: 'club', data: c, playerId: c.player_id })}>Editar</button></td>
-                    </tr>
-                  )
-                })}
-                {!clubInfo.length && <tr><td colSpan={8} style={{ textAlign: 'center', color: 'rgba(255,255,255,0.25)', padding: 16 }}>Sin contratos</td></tr>}
-              </tbody>
-            </table>
+          {/* Historial contratos club */}
+          <div className="section-title">HISTORIAL CONTRATOS CON CLUBES</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+            {players.map(p => {
+              const contratos = clubContracts.filter(c => c.player_id === p.id)
+              if (!contratos.length) return null
+              const isOpen = expandedPlayer === `club-${p.id}`
+              return (
+                <div key={p.id} className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                  <div onClick={() => setExpandedPlayer(isOpen ? null : `club-${p.id}`)}
+                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', cursor: 'pointer' }}>
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                      <span style={{ fontWeight: 600, color: '#fff', fontSize: 13 }}>{p.name}</span>
+                      <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>{contratos.length} contrato(s)</span>
+                      {contratos.filter(c => c.contract_active).length > 0 && (
+                        <span className="pill pill-ok">ACTIVO</span>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <button onClick={e => { e.stopPropagation(); setModal({ type: 'club', data: null, playerId: p.id, playerName: p.name }) }}
+                        style={{ fontSize: 10, padding: '3px 8px', borderRadius: 3, border: `1px solid rgba(201,168,76,0.3)`, background: 'transparent', color: GOLD, cursor: 'pointer', fontFamily: 'inherit' }}>
+                        + Nuevo
+                      </button>
+                      <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>{isOpen ? '▲' : '▼'}</span>
+                    </div>
+                  </div>
+                  {isOpen && (
+                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', overflowX: 'auto' }}>
+                      <table>
+                        <thead>
+                          <tr><th>Tipo</th><th>Club</th><th>Posición</th><th>Inicio</th><th>Fin</th><th>Salario</th><th>Comisión</th><th>Estado</th><th>PDF</th><th>Acc.</th></tr>
+                        </thead>
+                        <tbody>
+                          {contratos.map(c => (
+                            <tr key={c.id}>
+                              <td>
+                                <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+                                  color: TIPO_COLORS[c.tipo] || GOLD,
+                                  background: (TIPO_COLORS[c.tipo] || GOLD) + '22',
+                                  border: `1px solid ${(TIPO_COLORS[c.tipo] || GOLD)}44` }}>
+                                  {c.tipo}
+                                </span>
+                              </td>
+                              <td style={{ color: '#fff', fontWeight: 500 }}>{c.club_name}{c.club_destino ? ` → ${c.club_destino}` : ''}</td>
+                              <td>{c.position || '—'}</td>
+                              <td style={{ whiteSpace: 'nowrap' }}>{fmtDate(c.fecha_inicio)}</td>
+                              <td style={{ whiteSpace: 'nowrap' }}>{fmtDate(c.fecha_fin)}</td>
+                              <td>{fmt$(c.salary)}</td>
+                              <td>{c.commission_percentage ? c.commission_percentage + '%' : fmt$(c.commission_fixed)}</td>
+                              <td><span className={`pill ${c.contract_active ? 'pill-ok' : 'pill-off'}`}>{c.contract_active ? 'VIGENTE' : 'INACTIVO'}</span></td>
+                              <td>{c.contract_pdf_url ? <a href={c.contract_pdf_url} target="_blank" rel="noreferrer" style={{ color: GOLD, fontSize: 10 }}>Ver PDF</a> : '—'}</td>
+                              <td><button style={EDIT_BTN} onClick={() => setModal({ type: 'club', data: c, playerId: p.id, playerName: p.name })}>Editar</button></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+            {!clubContracts.length && <div className="card" style={{ textAlign: 'center', color: 'rgba(255,255,255,0.25)', padding: 24 }}>Sin contratos de club registrados</div>}
           </div>
-          <div className="section-title">CONTRATOS CON AGENCIA</div>
-          <div className="card" style={{ overflowX: 'auto' }}>
-            <table>
-              <thead><tr><th>Jugador</th><th>Incorporación</th><th>Inicio</th><th>Duración</th><th>PDF</th><th>Estado</th><th>Acción</th></tr></thead>
-              <tbody>
-                {agencyContracts.map(c => {
-                  const end = c.contract_date && c.contract_duration_months ? new Date(c.contract_date) : null
-                  if (end) end.setMonth(end.getMonth() + c.contract_duration_months)
-                  const days = end ? Math.floor((end - Date.now()) / (24 * 3600 * 1000)) : null
-                  const pc = !end ? 'pill-warn' : days > 90 ? 'pill-ok' : days > 0 ? 'pill-warn' : 'pill-urg'
-                  const es = !end ? 'SIN FECHA' : days > 90 ? 'VIGENTE' : days > 0 ? 'POR VENCER' : 'VENCIDO'
-                  return (
-                    <tr key={c.id}>
-                      <td style={{ color: '#fff', fontWeight: 500 }}>{c.players?.name || '—'}</td>
-                      <td>{fmtDate(c.incorporation_date)}</td><td>{fmtDate(c.contract_date)}</td>
-                      <td>{c.contract_duration_months ? c.contract_duration_months + ' meses' : '—'}</td>
-                      <td>{c.contract_pdf_url ? <a href={c.contract_pdf_url} target="_blank" rel="noreferrer" style={{ color: GOLD, fontSize: 10 }}>Ver PDF</a> : '—'}</td>
-                      <td><span className={`pill ${pc}`}>{es}</span></td>
-                      <td><button style={EDIT_BTN} onClick={() => setModal({ type: 'agency', data: c, playerId: c.player_id, playerName: players.find(x => x.id === c.player_id)?.name })}>Editar</button></td>
-                    </tr>
-                  )
-                })}
-                {!agencyContracts.length && <tr><td colSpan={7} style={{ textAlign: 'center', color: 'rgba(255,255,255,0.25)', padding: 16 }}>Sin contratos de agencia</td></tr>}
-              </tbody>
-            </table>
+
+          {/* Historial contratos agencia */}
+          <div className="section-title">HISTORIAL CONTRATOS CON AGENCIA</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {players.map(p => {
+              const contratos = agencyContracts.filter(c => c.player_id === p.id)
+              if (!contratos.length) return null
+              const isOpen = expandedPlayer === `agency-${p.id}`
+              return (
+                <div key={p.id} className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                  <div onClick={() => setExpandedPlayer(isOpen ? null : `agency-${p.id}`)}
+                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', cursor: 'pointer' }}>
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                      <span style={{ fontWeight: 600, color: '#fff', fontSize: 13 }}>{p.name}</span>
+                      <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>{contratos.length} contrato(s)</span>
+                      {contratos.filter(c => c.contract_active).length > 0 && <span className="pill pill-ok">ACTIVO</span>}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <button onClick={e => { e.stopPropagation(); setModal({ type: 'agency', data: null, playerId: p.id, playerName: p.name }) }}
+                        style={{ fontSize: 10, padding: '3px 8px', borderRadius: 3, border: `1px solid rgba(201,168,76,0.3)`, background: 'transparent', color: GOLD, cursor: 'pointer', fontFamily: 'inherit' }}>
+                        + Renovar
+                      </button>
+                      <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>{isOpen ? '▲' : '▼'}</span>
+                    </div>
+                  </div>
+                  {isOpen && (
+                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', overflowX: 'auto' }}>
+                      <table>
+                        <thead>
+                          <tr><th>Tipo</th><th>Incorporación</th><th>Inicio</th><th>Duración</th><th>Estado</th><th>PDF</th><th>Acc.</th></tr>
+                        </thead>
+                        <tbody>
+                          {contratos.map(c => {
+                            const end = c.contract_date && c.contract_duration_months ? new Date(c.contract_date) : null
+                            if (end) end.setMonth(end.getMonth() + c.contract_duration_months)
+                            const days = end ? Math.floor((end - Date.now()) / (24 * 3600 * 1000)) : null
+                            const pc = !end ? 'pill-warn' : days > 90 ? 'pill-ok' : days > 0 ? 'pill-warn' : 'pill-urg'
+                            const es = !end ? 'SIN FECHA' : days > 90 ? 'VIGENTE' : days > 0 ? 'POR VENCER' : 'VENCIDO'
+                            return (
+                              <tr key={c.id}>
+                                <td>
+                                  <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+                                    color: c.tipo === 'Renovación' ? '#60a5fa' : GOLD,
+                                    background: c.tipo === 'Renovación' ? 'rgba(96,165,250,0.15)' : 'rgba(201,168,76,0.15)',
+                                    border: `1px solid ${c.tipo === 'Renovación' ? 'rgba(96,165,250,0.3)' : 'rgba(201,168,76,0.3)'}` }}>
+                                    {c.tipo || 'Contrato'}
+                                  </span>
+                                </td>
+                                <td>{fmtDate(c.incorporation_date)}</td>
+                                <td>{fmtDate(c.contract_date)}</td>
+                                <td>{c.contract_duration_months ? c.contract_duration_months + ' meses' : '—'}</td>
+                                <td><span className={`pill ${pc}`}>{es}</span></td>
+                                <td>{c.contract_pdf_url ? <a href={c.contract_pdf_url} target="_blank" rel="noreferrer" style={{ color: GOLD, fontSize: 10 }}>Ver PDF</a> : '—'}</td>
+                                <td><button style={EDIT_BTN} onClick={() => setModal({ type: 'agency', data: c, playerId: p.id, playerName: p.name })}>Editar</button></td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+            {!agencyContracts.length && <div className="card" style={{ textAlign: 'center', color: 'rgba(255,255,255,0.25)', padding: 24 }}>Sin contratos de agencia registrados</div>}
           </div>
         </>
       )}
 
+      {/* TRANSACCIONES */}
       {tab === 'transactions' && (
         <div className="card" style={{ overflowX: 'auto' }}>
           <table>
