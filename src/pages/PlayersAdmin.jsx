@@ -20,6 +20,10 @@ function fmt$(n) {
   if (Math.abs(v) >= 1000) return '$' + (v / 1000).toFixed(0) + 'K'
   return '$' + v.toFixed(0)
 }
+function fmtCLP(n) {
+  if (!n) return '—'
+  return '$ ' + Math.round(parseFloat(n)).toLocaleString('es-CL')
+}
 const GOLD = '#C9A84C'
 const TAB_STYLE = (active) => ({
   padding: '7px 16px', fontSize: 11, fontWeight: 600, letterSpacing: .5,
@@ -39,15 +43,108 @@ const CATEGORIAS = ['Elite', 'Pro']
 const EMPTY_ITEM = () => ({ player_id: '', marca: 'adidas', uk: '', modelo: '', suela: 'FG', categoria: 'Elite', pares: 1 })
 
 const TIPO_COLORS = {
-  'Contrato': GOLD,
-  'Renovación': '#60a5fa',
-  'Préstamo': '#34d399',
-  'Cesión': '#f87171',
+  'Contrato': GOLD, 'Renovación': '#60a5fa',
+  'Préstamo': '#34d399', 'Cesión': '#f87171',
+}
+
+// ─── Modal vinculación factura ────────────────────────────────────────────────
+function ModalVincularFactura({ orden, playerName, onVincular, onClose }) {
+  const [txList, setTxList] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [selected, setSelected] = useState(orden.transaction_id || '')
+
+  useEffect(() => {
+    // Cargar transacciones de zapatos del jugador
+    supabase.from('transactions')
+      .select('*')
+      .eq('player_id', orden.player_id)
+      .eq('type', 'expense')
+      .order('transaction_date', { ascending: false })
+      .then(({ data }) => {
+        // Filtrar zapatos/botines
+        const zapatos = (data || []).filter(t =>
+          t.subtype?.toLowerCase().includes('zapato') ||
+          t.subtype?.toLowerCase().includes('botin') ||
+          t.description?.toLowerCase().includes('zapato') ||
+          t.description?.toLowerCase().includes('botin') ||
+          t.description?.toLowerCase().includes('nike') ||
+          t.description?.toLowerCase().includes('adidas') ||
+          t.description?.toLowerCase().includes('skechers')
+        )
+        setTxList(zapatos)
+        setLoading(false)
+      })
+  }, [])
+
+  const handleGuardar = async () => {
+    await supabase.from('shoe_orders')
+      .update({ transaction_id: selected || null })
+      .eq('id', orden.id)
+    onVincular()
+  }
+
+  return (
+    <div onClick={e => e.target === e.currentTarget && onClose()}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ background: '#0f1a3a', border: '1px solid rgba(201,168,76,0.3)', borderRadius: 12, padding: 24, width: '100%', maxWidth: 560, maxHeight: '80vh', overflowY: 'auto' }}>
+        <div style={{ fontSize: 13, color: GOLD, fontWeight: 600, letterSpacing: 1, marginBottom: 4 }}>VINCULAR FACTURA</div>
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 16 }}>
+          {playerName} · {MARCAS_LABEL[orden.marca] || orden.marca} · {orden.modelo || '—'} · {orden.pares} par(es)
+        </div>
+
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: 24, color: GOLD }}>Cargando transacciones...</div>
+        ) : txList.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 24, color: 'rgba(255,255,255,0.3)', fontSize: 13 }}>
+            No hay transacciones de zapatos para este jugador.<br />
+            <span style={{ fontSize: 11 }}>Ingresa primero la factura en Transacciones.</span>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+            {/* Opción desvincular */}
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 6, cursor: 'pointer',
+              background: selected === '' ? 'rgba(248,113,113,0.08)' : 'rgba(255,255,255,0.03)',
+              border: `1px solid ${selected === '' ? 'rgba(248,113,113,0.3)' : 'rgba(255,255,255,0.06)'}` }}>
+              <input type="radio" checked={selected === ''} onChange={() => setSelected('')}
+                style={{ accentColor: '#f87171' }} />
+              <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>Sin vincular</span>
+            </label>
+            {txList.map(tx => (
+              <label key={tx.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 12px', borderRadius: 6, cursor: 'pointer',
+                background: selected === tx.id ? 'rgba(201,168,76,0.08)' : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${selected === tx.id ? 'rgba(201,168,76,0.3)' : 'rgba(255,255,255,0.06)'}` }}>
+                <input type="radio" checked={selected === tx.id} onChange={() => setSelected(tx.id)}
+                  style={{ accentColor: GOLD, marginTop: 2 }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                    <span style={{ fontSize: 12, color: '#fff', fontWeight: 500 }}>
+                      {tx.description || tx.subtype || '—'}
+                    </span>
+                    <span style={{ fontSize: 12, color: GOLD, fontWeight: 600 }}>{fmtCLP(tx.amount)}</span>
+                  </div>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>
+                    {fmtDate(tx.transaction_date)}
+                    {tx.documento_respaldo && <span style={{ marginLeft: 8 }}>Doc: {tx.documento_respaldo}</span>}
+                  </div>
+                </div>
+              </label>
+            ))}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn-gold" onClick={handleGuardar}>GUARDAR VÍNCULO</button>
+          <button className="btn-ghost" onClick={onClose}>CANCELAR</button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // ─── PedidosTab ───────────────────────────────────────────────────────────────
 function PedidosTab({ players }) {
   const [orders, setOrders] = useState([])
+  const [transactions, setTransactions] = useState([])
   const [shoeSizes, setShoeSizes] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -58,14 +155,19 @@ function PedidosTab({ players }) {
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
   const [filterEstado, setFilterEstado] = useState('todos')
+  const [modalFactura, setModalFactura] = useState(null) // orden seleccionada para vincular
   const [fechaPedido, setFechaPedido] = useState(new Date().toISOString().split('T')[0])
   const [notasPedido, setNotasPedido] = useState('')
   const [items, setItems] = useState([EMPTY_ITEM()])
 
   const loadOrders = async () => {
     setLoading(true)
-    const { data } = await supabase.from('shoe_orders').select('*').order('fecha_pedido', { ascending: false })
-    setOrders(data || [])
+    const [{ data: ord }, { data: tx }] = await Promise.all([
+      supabase.from('shoe_orders').select('*').order('fecha_pedido', { ascending: false }),
+      supabase.from('transactions').select('*').eq('type', 'expense'),
+    ])
+    setOrders(ord || [])
+    setTransactions(tx || [])
     setLoading(false)
   }
 
@@ -151,14 +253,12 @@ function PedidosTab({ players }) {
     if (!selectedPlayers.length) { setMsg('Selecciona al menos un jugador'); return }
     setGenerando(true)
     try {
-      // Cargar transacciones de zapatos de los jugadores seleccionados
       const { data: txData } = await supabase
         .from('transactions')
         .select('*')
         .in('player_id', selectedPlayers)
         .eq('type', 'expense')
-        .or('subtype.ilike.%zapatos%,subtype.ilike.%botines%,subtype.ilike.%Zapatos%,subtype.ilike.%Botines%')
-   
+
       const jugadoresSeleccionados = players.filter(p => selectedPlayers.includes(p.id))
       const doc = generarReporteCalzadoPDF({
         jugadores: jugadoresSeleccionados,
@@ -175,6 +275,10 @@ function PedidosTab({ players }) {
 
   const playerMap = {}
   players.forEach(p => { playerMap[p.id] = p })
+
+  // Map transaction_id → transaction para mostrar info de factura
+  const txMap = {}
+  transactions.forEach(t => { txMap[t.id] = t })
 
   const filtered = orders.filter(o => {
     const p = playerMap[o.player_id]
@@ -193,6 +297,17 @@ function PedidosTab({ players }) {
 
   return (
     <div>
+      {/* Modal vincular factura */}
+      {modalFactura && (
+        <ModalVincularFactura
+          orden={modalFactura}
+          playerName={playerMap[modalFactura.player_id]?.name || '—'}
+          onVincular={() => { setModalFactura(null); loadOrders() }}
+          onClose={() => setModalFactura(null)}
+        />
+      )}
+
+      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
         <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontWeight: 600, letterSpacing: 1.5 }}>PEDIDOS DE BOTINES</div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -215,6 +330,7 @@ function PedidosTab({ players }) {
         </div>
       )}
 
+      {/* Panel reporte */}
       {showReporte && (
         <div className="card" style={{ marginBottom: 16, border: '1px solid rgba(201,168,76,0.25)' }}>
           <div style={{ fontSize: 11, color: GOLD, fontWeight: 600, letterSpacing: 1.5, marginBottom: 12 }}>
@@ -238,12 +354,11 @@ function PedidosTab({ players }) {
                 <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderRadius: 5, cursor: 'pointer',
                   background: sel ? 'rgba(201,168,76,0.1)' : 'rgba(255,255,255,0.03)',
                   border: `1px solid ${sel ? 'rgba(201,168,76,0.3)' : 'rgba(255,255,255,0.06)'}`,
-                  transition: 'all .15s', opacity: tieneOrdenes ? 1 : 0.5 }}>
-                  <input type="checkbox" checked={sel} onChange={() => togglePlayer(p.id)}
-                    style={{ accentColor: GOLD, width: 14, height: 14 }} />
+                  opacity: tieneOrdenes ? 1 : 0.5 }}>
+                  <input type="checkbox" checked={sel} onChange={() => togglePlayer(p.id)} style={{ accentColor: GOLD, width: 14, height: 14 }} />
                   <div>
                     <div style={{ fontSize: 12, color: sel ? GOLD : '#fff', fontWeight: 500 }}>{p.name}</div>
-                    {!tieneOrdenes && <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>Sin entregas registradas</div>}
+                    {!tieneOrdenes && <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>Sin entregas</div>}
                   </div>
                 </label>
               )
@@ -253,11 +368,12 @@ function PedidosTab({ players }) {
             <button className="btn-gold" onClick={handleGenerarReporte} disabled={generando || !selectedPlayers.length}>
               {generando ? 'GENERANDO...' : `⬇ GENERAR PDF (${selectedPlayers.length} jugador${selectedPlayers.length !== 1 ? 'es' : ''})`}
             </button>
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>Solo incluye botines con estado "Entregado"</span>
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>Incluye pedidos y compras históricas</span>
           </div>
         </div>
       )}
 
+      {/* Formulario nuevo pedido */}
       {showForm && (
         <div className="card" style={{ marginBottom: 20, border: '1px solid rgba(201,168,76,0.25)' }}>
           <div style={{ fontSize: 11, color: GOLD, fontWeight: 600, letterSpacing: 1.5, marginBottom: 16 }}>NUEVO PEDIDO</div>
@@ -307,6 +423,7 @@ function PedidosTab({ players }) {
         </div>
       )}
 
+      {/* Filtros */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar jugador..." style={{ ...INPUT, width: 200 }} />
         {['todos', 'pendiente', 'entregado'].map(e => (
@@ -316,6 +433,7 @@ function PedidosTab({ players }) {
         ))}
       </div>
 
+      {/* Pedidos agrupados */}
       {loading ? (
         <div style={{ textAlign: 'center', padding: 40, color: GOLD, fontFamily: 'Bebas Neue', letterSpacing: 2 }}>CARGANDO...</div>
       ) : groupList.length === 0 ? (
@@ -342,11 +460,12 @@ function PedidosTab({ players }) {
               <div style={{ overflowX: 'auto' }}>
                 <table>
                   <thead>
-                    <tr><th>Jugador</th><th>Marca</th><th>UK</th><th>US</th><th>EU</th><th>Modelo</th><th>Suela</th><th>Cat.</th><th>Pares</th><th>Estado</th><th>F.Entrega</th><th>Acc.</th></tr>
+                    <tr><th>Jugador</th><th>Marca</th><th>UK</th><th>US</th><th>EU</th><th>Modelo</th><th>Suela</th><th>Cat.</th><th>Pares</th><th>Estado</th><th>F.Entrega</th><th>Factura</th><th>Acc.</th></tr>
                   </thead>
                   <tbody>
                     {grp.items.map(o => {
                       const p = playerMap[o.player_id]
+                      const factura = o.transaction_id ? txMap[o.transaction_id] : null
                       return (
                         <tr key={o.id}>
                           <td style={{ color: '#fff', fontWeight: 500 }}>{p?.name || '—'}</td>
@@ -359,10 +478,27 @@ function PedidosTab({ players }) {
                           <td style={{ textAlign: 'center' }}>{o.pares}</td>
                           <td><span className={`pill ${o.estado === 'entregado' ? 'pill-ok' : 'pill-warn'}`}>{o.estado === 'entregado' ? '✓' : 'PEND.'}</span></td>
                           <td style={{ whiteSpace: 'nowrap', fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>{o.fecha_entrega ? fmtDate(o.fecha_entrega) : '—'}</td>
+                          {/* Columna factura */}
+                          <td>
+                            {factura ? (
+                              <div style={{ fontSize: 10 }}>
+                                <div style={{ color: '#4ade80', fontWeight: 600 }}>{fmtCLP(factura.amount)}</div>
+                                <div style={{ color: 'rgba(255,255,255,0.3)' }}>{factura.documento_respaldo || '—'}</div>
+                              </div>
+                            ) : (
+                              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)' }}>Sin vincular</span>
+                            )}
+                          </td>
                           <td>
                             <div style={{ display: 'flex', gap: 4 }}>
                               {o.estado === 'pendiente' && (
                                 <button onClick={() => handleEntregar(o.id)} style={{ fontSize: 10, padding: '3px 6px', borderRadius: 3, border: '1px solid rgba(74,222,128,0.3)', background: 'transparent', color: '#4ade80', cursor: 'pointer', fontFamily: 'inherit' }}>✓</button>
+                              )}
+                              {o.estado === 'entregado' && (
+                                <button onClick={() => setModalFactura(o)}
+                                  style={{ fontSize: 10, padding: '3px 6px', borderRadius: 3, border: `1px solid ${factura ? 'rgba(201,168,76,0.4)' : 'rgba(255,255,255,0.2)'}`, background: 'transparent', color: factura ? GOLD : 'rgba(255,255,255,0.4)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                                  📎
+                                </button>
                               )}
                               <button onClick={() => handleDelete(o.id)} style={{ fontSize: 10, padding: '3px 6px', borderRadius: 3, border: '1px solid rgba(248,113,113,0.3)', background: 'transparent', color: '#f87171', cursor: 'pointer', fontFamily: 'inherit' }}>✕</button>
                             </div>
@@ -378,6 +514,7 @@ function PedidosTab({ players }) {
         })
       )}
 
+      {/* Tabla referencia tallas */}
       <div className="card" style={{ marginTop: 16 }}>
         <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontWeight: 600, letterSpacing: 1.5, marginBottom: 12 }}>TALLAS POR JUGADOR</div>
         <div style={{ overflowX: 'auto' }}>
@@ -446,48 +583,19 @@ export default function PlayersAdmin() {
     if (!activeClubMap[c.player_id] && c.contract_active) activeClubMap[c.player_id] = c
   })
 
-  // ── Helpers para pre-cargar datos en nuevos contratos ─────────────────────
   const openNuevoClub = (playerId, playerName) => {
-    // Buscar último contrato activo del jugador para heredar datos
     const ultimo = clubContracts
       .filter(c => c.player_id === playerId)
       .sort((a, b) => new Date(b.fecha_inicio || b.created_at) - new Date(a.fecha_inicio || a.created_at))[0]
-
-    const base = ultimo ? {
-      ...ultimo,
-      id: null,             // sin ID → insert nuevo
-      tipo: 'Renovación',   // tipo por defecto al crear desde historial
-      fecha_inicio: '',     // limpiar fechas
-      fecha_fin: '',
-      salary: '',           // limpiar financiero (puede cambiar)
-      commission_percentage: '',
-      commission_fixed: '',
-      contract_pdf_url: '', // limpiar PDF
-      contract_active: true,
-      // Se mantienen: club_name, position, transfermarkt_profile,
-      // transfermarkt_valuation, club_destino, notas
-    } : null
-
+    const base = ultimo ? { ...ultimo, id: null, tipo: 'Renovación', fecha_inicio: '', fecha_fin: '', salary: '', commission_percentage: '', commission_fixed: '', contract_pdf_url: '', contract_active: true } : null
     setModal({ type: 'club', data: base, playerId, playerName })
   }
 
   const openNuevoAgency = (playerId, playerName) => {
-    // Buscar último contrato de agencia para heredar datos
     const ultimo = agencyContracts
       .filter(c => c.player_id === playerId)
       .sort((a, b) => new Date(b.contract_date || b.created_at) - new Date(a.contract_date || a.created_at))[0]
-
-    const base = ultimo ? {
-      ...ultimo,
-      id: null,
-      tipo: 'Renovación',
-      incorporation_date: '',
-      contract_date: '',
-      contract_duration_months: '',
-      contract_pdf_url: '',
-      contract_active: true,
-    } : null
-
+    const base = ultimo ? { ...ultimo, id: null, tipo: 'Renovación', incorporation_date: '', contract_date: '', contract_duration_months: '', contract_pdf_url: '', contract_active: true } : null
     setModal({ type: 'agency', data: base, playerId, playerName })
   }
 
@@ -541,11 +649,7 @@ export default function PlayersAdmin() {
           <div className="card" style={{ overflowX: 'auto' }}>
             <table>
               <thead>
-                <tr>
-                  <th>Nombre</th><th>RUT</th><th>Posición</th><th>Club</th>
-                  <th>Nacimiento</th><th>Altura</th><th>Peso</th><th>Pie</th>
-                  <th>Estado</th><th>Landing</th><th>Acciones</th>
-                </tr>
+                <tr><th>Nombre</th><th>RUT</th><th>Posición</th><th>Club</th><th>Nacimiento</th><th>Altura</th><th>Peso</th><th>Pie</th><th>Estado</th><th>Landing</th><th>Acciones</th></tr>
               </thead>
               <tbody>
                 {filtered.map(p => {
@@ -620,20 +724,11 @@ export default function PlayersAdmin() {
                   {isOpen && (
                     <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', overflowX: 'auto' }}>
                       <table>
-                        <thead>
-                          <tr><th>Tipo</th><th>Club</th><th>Posición</th><th>Inicio</th><th>Fin</th><th>Salario</th><th>Comisión</th><th>Estado</th><th>PDF</th><th>Acc.</th></tr>
-                        </thead>
+                        <thead><tr><th>Tipo</th><th>Club</th><th>Posición</th><th>Inicio</th><th>Fin</th><th>Salario</th><th>Comisión</th><th>Estado</th><th>PDF</th><th>Acc.</th></tr></thead>
                         <tbody>
                           {contratos.map(c => (
                             <tr key={c.id}>
-                              <td>
-                                <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
-                                  color: TIPO_COLORS[c.tipo] || GOLD,
-                                  background: (TIPO_COLORS[c.tipo] || GOLD) + '22',
-                                  border: `1px solid ${(TIPO_COLORS[c.tipo] || GOLD)}44` }}>
-                                  {c.tipo}
-                                </span>
-                              </td>
+                              <td><span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, color: TIPO_COLORS[c.tipo] || GOLD, background: (TIPO_COLORS[c.tipo] || GOLD) + '22', border: `1px solid ${(TIPO_COLORS[c.tipo] || GOLD)}44` }}>{c.tipo}</span></td>
                               <td style={{ color: '#fff', fontWeight: 500 }}>{c.club_name}{c.club_destino ? ` → ${c.club_destino}` : ''}</td>
                               <td>{c.position || '—'}</td>
                               <td style={{ whiteSpace: 'nowrap' }}>{fmtDate(c.fecha_inicio)}</td>
@@ -681,9 +776,7 @@ export default function PlayersAdmin() {
                   {isOpen && (
                     <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', overflowX: 'auto' }}>
                       <table>
-                        <thead>
-                          <tr><th>Tipo</th><th>Incorporación</th><th>Inicio</th><th>Duración</th><th>Estado</th><th>PDF</th><th>Acc.</th></tr>
-                        </thead>
+                        <thead><tr><th>Tipo</th><th>Incorporación</th><th>Inicio</th><th>Duración</th><th>Estado</th><th>PDF</th><th>Acc.</th></tr></thead>
                         <tbody>
                           {contratos.map(c => {
                             const end = c.contract_date && c.contract_duration_months ? new Date(c.contract_date) : null
@@ -693,14 +786,7 @@ export default function PlayersAdmin() {
                             const es = !end ? 'SIN FECHA' : days > 90 ? 'VIGENTE' : days > 0 ? 'POR VENCER' : 'VENCIDO'
                             return (
                               <tr key={c.id}>
-                                <td>
-                                  <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
-                                    color: c.tipo === 'Renovación' ? '#60a5fa' : GOLD,
-                                    background: c.tipo === 'Renovación' ? 'rgba(96,165,250,0.15)' : 'rgba(201,168,76,0.15)',
-                                    border: `1px solid ${c.tipo === 'Renovación' ? 'rgba(96,165,250,0.3)' : 'rgba(201,168,76,0.3)'}` }}>
-                                    {c.tipo || 'Contrato'}
-                                  </span>
-                                </td>
+                                <td><span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, color: c.tipo === 'Renovación' ? '#60a5fa' : GOLD, background: c.tipo === 'Renovación' ? 'rgba(96,165,250,0.15)' : 'rgba(201,168,76,0.15)', border: `1px solid ${c.tipo === 'Renovación' ? 'rgba(96,165,250,0.3)' : 'rgba(201,168,76,0.3)'}` }}>{c.tipo || 'Contrato'}</span></td>
                                 <td>{fmtDate(c.incorporation_date)}</td>
                                 <td>{fmtDate(c.contract_date)}</td>
                                 <td>{c.contract_duration_months ? c.contract_duration_months + ' meses' : '—'}</td>
