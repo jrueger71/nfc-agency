@@ -180,15 +180,13 @@ function PedidosTab({ players }) {
 
   return (
     <div>
-      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
         <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontWeight: 600, letterSpacing: 1.5 }}>PEDIDOS DE BOTINES</div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={() => setShowReporte(r => !r)}
-            style={{ fontSize: 11, padding: '6px 14px', borderRadius: 3, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all .15s',
+            style={{ fontSize: 11, padding: '6px 14px', borderRadius: 3, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
               border: `1px solid rgba(201,168,76,0.3)`,
-              background: showReporte ? 'rgba(201,168,76,0.15)' : 'transparent',
-              color: GOLD }}>
+              background: showReporte ? 'rgba(201,168,76,0.15)' : 'transparent', color: GOLD }}>
             📄 REPORTE CALZADO
           </button>
           <button className="btn-gold" onClick={openNew}>+ NUEVO PEDIDO</button>
@@ -204,7 +202,6 @@ function PedidosTab({ players }) {
         </div>
       )}
 
-      {/* Panel selector reporte */}
       {showReporte && (
         <div className="card" style={{ marginBottom: 16, border: '1px solid rgba(201,168,76,0.25)' }}>
           <div style={{ fontSize: 11, color: GOLD, fontWeight: 600, letterSpacing: 1.5, marginBottom: 12 }}>
@@ -233,9 +230,7 @@ function PedidosTab({ players }) {
                     style={{ accentColor: GOLD, width: 14, height: 14 }} />
                   <div>
                     <div style={{ fontSize: 12, color: sel ? GOLD : '#fff', fontWeight: 500 }}>{p.name}</div>
-                    {!tieneOrdenes && (
-                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>Sin entregas registradas</div>
-                    )}
+                    {!tieneOrdenes && <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>Sin entregas registradas</div>}
                   </div>
                 </label>
               )
@@ -245,14 +240,11 @@ function PedidosTab({ players }) {
             <button className="btn-gold" onClick={handleGenerarReporte} disabled={generando || !selectedPlayers.length}>
               {generando ? 'GENERANDO...' : `⬇ GENERAR PDF (${selectedPlayers.length} jugador${selectedPlayers.length !== 1 ? 'es' : ''})`}
             </button>
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>
-              Solo incluye botines con estado "Entregado"
-            </span>
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>Solo incluye botines con estado "Entregado"</span>
           </div>
         </div>
       )}
 
-      {/* Formulario nuevo pedido */}
       {showForm && (
         <div className="card" style={{ marginBottom: 20, border: '1px solid rgba(201,168,76,0.25)' }}>
           <div style={{ fontSize: 11, color: GOLD, fontWeight: 600, letterSpacing: 1.5, marginBottom: 16 }}>NUEVO PEDIDO</div>
@@ -302,7 +294,6 @@ function PedidosTab({ players }) {
         </div>
       )}
 
-      {/* Filtros */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar jugador..." style={{ ...INPUT, width: 200 }} />
         {['todos', 'pendiente', 'entregado'].map(e => (
@@ -312,7 +303,6 @@ function PedidosTab({ players }) {
         ))}
       </div>
 
-      {/* Pedidos agrupados */}
       {loading ? (
         <div style={{ textAlign: 'center', padding: 40, color: GOLD, fontFamily: 'Bebas Neue', letterSpacing: 2 }}>CARGANDO...</div>
       ) : groupList.length === 0 ? (
@@ -375,7 +365,6 @@ function PedidosTab({ players }) {
         })
       )}
 
-      {/* Tabla referencia tallas */}
       <div className="card" style={{ marginTop: 16 }}>
         <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontWeight: 600, letterSpacing: 1.5, marginBottom: 12 }}>TALLAS POR JUGADOR</div>
         <div style={{ overflowX: 'auto' }}>
@@ -443,6 +432,51 @@ export default function PlayersAdmin() {
   clubContracts.forEach(c => {
     if (!activeClubMap[c.player_id] && c.contract_active) activeClubMap[c.player_id] = c
   })
+
+  // ── Helpers para pre-cargar datos en nuevos contratos ─────────────────────
+  const openNuevoClub = (playerId, playerName) => {
+    // Buscar último contrato activo del jugador para heredar datos
+    const ultimo = clubContracts
+      .filter(c => c.player_id === playerId)
+      .sort((a, b) => new Date(b.fecha_inicio || b.created_at) - new Date(a.fecha_inicio || a.created_at))[0]
+
+    const base = ultimo ? {
+      ...ultimo,
+      id: null,             // sin ID → insert nuevo
+      tipo: 'Renovación',   // tipo por defecto al crear desde historial
+      fecha_inicio: '',     // limpiar fechas
+      fecha_fin: '',
+      salary: '',           // limpiar financiero (puede cambiar)
+      commission_percentage: '',
+      commission_fixed: '',
+      contract_pdf_url: '', // limpiar PDF
+      contract_active: true,
+      // Se mantienen: club_name, position, transfermarkt_profile,
+      // transfermarkt_valuation, club_destino, notas
+    } : null
+
+    setModal({ type: 'club', data: base, playerId, playerName })
+  }
+
+  const openNuevoAgency = (playerId, playerName) => {
+    // Buscar último contrato de agencia para heredar datos
+    const ultimo = agencyContracts
+      .filter(c => c.player_id === playerId)
+      .sort((a, b) => new Date(b.contract_date || b.created_at) - new Date(a.contract_date || a.created_at))[0]
+
+    const base = ultimo ? {
+      ...ultimo,
+      id: null,
+      tipo: 'Renovación',
+      incorporation_date: '',
+      contract_date: '',
+      contract_duration_months: '',
+      contract_pdf_url: '',
+      contract_active: true,
+    } : null
+
+    setModal({ type: 'agency', data: base, playerId, playerName })
+  }
 
   const filtered = players.filter(p =>
     p.name?.toLowerCase().includes(search.toLowerCase()) || p.rut?.includes(search)
@@ -526,8 +560,8 @@ export default function PlayersAdmin() {
                       <td>
                         <div style={{ display: 'flex', gap: 4 }}>
                           <button style={EDIT_BTN} onClick={() => setModal({ type: 'player', data: p })}>Editar</button>
-                          <button style={GHOST_BTN} onClick={() => setModal({ type: 'club', data: null, playerId: p.id, playerName: p.name })}>+ Club</button>
-                          <button style={GHOST_BTN} onClick={() => setModal({ type: 'agency', data: null, playerId: p.id, playerName: p.name })}>+ Agencia</button>
+                          <button style={GHOST_BTN} onClick={() => openNuevoClub(p.id, p.name)}>+ Club</button>
+                          <button style={GHOST_BTN} onClick={() => openNuevoAgency(p.id, p.name)}>+ Agencia</button>
                           <button onClick={() => navigate(`/admin/documentos/${p.id}`)}
                             style={{ fontSize: 10, padding: '3px 8px', borderRadius: 3, border: '1px solid rgba(201,168,76,0.4)', background: 'rgba(201,168,76,0.1)', color: GOLD, cursor: 'pointer', fontFamily: 'inherit' }}>
                             📄 Docs
@@ -563,7 +597,7 @@ export default function PlayersAdmin() {
                       {contratos.filter(c => c.contract_active).length > 0 && <span className="pill pill-ok">ACTIVO</span>}
                     </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <button onClick={e => { e.stopPropagation(); setModal({ type: 'club', data: null, playerId: p.id, playerName: p.name }) }}
+                      <button onClick={e => { e.stopPropagation(); openNuevoClub(p.id, p.name) }}
                         style={{ fontSize: 10, padding: '3px 8px', borderRadius: 3, border: `1px solid rgba(201,168,76,0.3)`, background: 'transparent', color: GOLD, cursor: 'pointer', fontFamily: 'inherit' }}>
                         + Nuevo
                       </button>
@@ -624,7 +658,7 @@ export default function PlayersAdmin() {
                       {contratos.filter(c => c.contract_active).length > 0 && <span className="pill pill-ok">ACTIVO</span>}
                     </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <button onClick={e => { e.stopPropagation(); setModal({ type: 'agency', data: null, playerId: p.id, playerName: p.name }) }}
+                      <button onClick={e => { e.stopPropagation(); openNuevoAgency(p.id, p.name) }}
                         style={{ fontSize: 10, padding: '3px 8px', borderRadius: 3, border: `1px solid rgba(201,168,76,0.3)`, background: 'transparent', color: GOLD, cursor: 'pointer', fontFamily: 'inherit' }}>
                         + Renovar
                       </button>
