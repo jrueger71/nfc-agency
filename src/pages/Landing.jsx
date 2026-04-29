@@ -88,7 +88,7 @@ function clubDisplay(p) {
     const tipo = p.loan_tipo?.toLowerCase() || 'préstamo'
     return {
       principal: p.loan_club_name,
-      secundario: `${tipo} de ${p.club_name}`,
+      secundario: `${tipo} de ${p.loan_club_origen || p.club_name}`,
     }
   }
   return { principal: p.club_name, secundario: null }
