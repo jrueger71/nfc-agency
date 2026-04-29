@@ -17,10 +17,21 @@ Desarrollado en React + Vite, conectado a Supabase como backend.
 - URL proyecto: qgjdphqmwgrkwfbxbyhc.supabase.co
 - Usuario admin: jc.rueger@gmail.com
 
+## Variables de entorno (.env)
+```
+VITE_SUPABASE_URL=https://qgjdphqmwgrkwfbxbyhc.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+VITE_API_FOOTBALL_KEY=41d36cb86fef5e5dd97c63edcfd04b80
+```
+- API Football: registrado en dashboard.api-football.com (NO via RapidAPI)
+- Endpoint: https://v3.football.api-sports.io/
+- Header: x-apisports-key
+- Plan gratuito: solo temporadas 2022-2024. Para 2025-2026 requiere plan Starter (~$9/mes)
+
 ## Identidad visual
 - **Colores:** Azul marino #1B2B5E + Dorado #C9A84C
 - **Tipografía:** Bebas Neue (títulos) + Barlow (cuerpo)
-- **Logo:** Supabase Storage → player-media/logo_nfc.JPG
+- **Logo:** logo_nfc_transparent.png en bucket player-media (PNG con fondo transparente)
 
 ## Equipo de la agencia
 - **Aldo Maldonado** — Fundador · Agente FIFA · Licencia 202406-7288 · RUT 10.370.416-2 · Nac: 27-04-1978
@@ -34,133 +45,119 @@ Desarrollado en React + Vite, conectado a Supabase como backend.
 ```
 src/
 ├── lib/
-│   ├── supabase.js              # Cliente Supabase con persistSession
-│   ├── generarContrato.js       # PDF contrato representación (con Art.11 opcional)
-│   ├── generarAnexoA.js         # PDF Anexo A
-│   ├── generarAutorizacion.js   # PDF Autorización exclusiva + Poder especial
-│   └── generarDocEspeciales.js  # PDF Nómina jugadores + Declaración conflicto interés
+│   ├── supabase.js
+│   ├── generarContrato.js       # PDF contrato representación
+│   ├── generarAnexoA.js
+│   ├── generarAutorizacion.js
+│   └── generarDocEspeciales.js
 ├── components/
-│   ├── Navbar.jsx
+│   ├── Navbar.jsx               # Logo PNG transparente desde Storage
 │   ├── Cumpleanos.jsx
-│   ├── ImageCropper.jsx         # Recortador rect 3/4 (perfil) y 16/9 (noticias)
-│   ├── PlayerForm.jsx
-│   ├── ClubContractForm.jsx     # Con upload PDF
-│   ├── AgencyContractForm.jsx   # Con upload PDF
+│   ├── ImageCropper.jsx
+│   ├── PlayerForm.jsx           # + gender, estado, stats_visible, stats_campos_publicos, api_football_id
+│   ├── PlayerStats.jsx          # NUEVO: estadísticas + cláusulas + API-Football sync
+│   ├── ClubContractForm.jsx     # → usa club_contracts (historial)
+│   ├── AgencyContractForm.jsx   # + campo tipo (Contrato/Renovación)
 │   ├── TransactionForm.jsx
 │   ├── MediaUploader.jsx
-│   └── DocsEspeciales.jsx       # 3 sub-pestañas: Autorización/Poder, Nómina, Declaración
+│   └── DocsEspeciales.jsx
 ├── pages/
-│   ├── Landing.jsx              # Cards 3/4 con foto
+│   ├── Landing.jsx              # Filtra por mostrar_en_landing=true
 │   ├── Login.jsx
-│   ├── Dashboard.jsx
-│   ├── PlayersAdmin.jsx         # 4 tabs: Plantel, Contratos, Transacciones, Docs Especiales
-│   ├── PlayerDetail.jsx         # Ficha pública sin datos sensibles
+│   ├── Dashboard.jsx            # + alertas cláusulas, alertas botines, resumen anual botines
+│   ├── PlayersAdmin.jsx         # + tab Pedidos, historial contratos colapsable por jugador
+│   ├── PlayerDetail.jsx         # + sección Estadísticas (con/sin login)
 │   ├── Finanzas.jsx
 │   ├── Noticias.jsx
-│   ├── Documentos.jsx           # Contrato + Anexo A + Contrato Tipo
-│   └── RRSS.jsx                 # Generador plantillas redes sociales
+│   ├── Documentos.jsx           # Logo PNG en PDFs
+│   ├── RRSS.jsx
+│   └── Usuarios.jsx
 ```
 
 ## Tablas Supabase
 | Tabla | Descripción |
 |-------|-------------|
-| `players` | id, rut, name, birth_date, skill_foot, shoe_size, glove_size, height, weight, foto_url, gender (M/F), **estado** (Activo/Cadete/Libre) |
-| `players_full_info` | Vista completa jugador |
-| `club_info` | Contratos clubes (salary, commission_%, transfermarkt_profile, transfermarkt_valuation, contract_pdf_url) |
-| `agency_contracts` | Contratos agencia (incorporation_date, contract_date, duration, contract_pdf_url) |
-| `transactions` | Movimientos financieros (type, subtype, amount, moneda, documento_respaldo) |
+| `players` | id, rut, name, birth_date, skill_foot, shoe_size, glove_size, height, weight, foto_url, gender (M/F), estado (Activo/Cadete/Libre), mostrar_en_landing, stats_visible, stats_campos_publicos (text[]), api_football_id |
+| `players_full_info` | Vista completa — usa club_contracts (LATERAL JOIN último activo) |
+| `club_contracts` | **NUEVO** Historial contratos club: tipo (Contrato/Renovación/Préstamo/Cesión), club_name, club_destino, position, fecha_inicio, fecha_fin, salary, commission_%, contract_pdf_url |
+| `club_info` | **DEPRECATED** — datos migrados a club_contracts. Mantener por ahora |
+| `agency_contracts` | Historial contratos agencia: + campo tipo (Contrato/Renovación) |
+| `transactions` | Movimientos financieros |
 | `player_financial_summary` | Vista resumen financiero |
-| `player_media` | Fotos y videos (media_type, url, display_order) |
+| `player_media` | Fotos y videos |
 | `contact_info` | Datos contacto jugador |
-| `user_roles` | Roles (admin/digitador/visor) |
-| `noticias` | Noticias e hitos (tipo, jugador_id, visible, imagen_url, video_url) |
-| `admin_users` | Usuarios administradores |
+| `user_roles` | id, user_id, email, nombre, role (admin/agente/socio/digitador/visor) |
+| `noticias` | Noticias e hitos |
+| `shoe_sizes` | Conversiones tallas UK→marca: marca, uk, us, eu, cms |
+| `shoe_orders` | Pedidos botines: group_id, player_id, marca, uk, us, eu, modelo, suela (FG/SG), categoria (Elite/Pro), pares, fecha_pedido, estado (pendiente/entregado), fecha_entrega |
+| `shoe_order_groups` | Agrupador de pedidos múltiples: fecha_pedido, notas |
+| `player_stats` | Estadísticas por partido: player_id, temporada, fecha, rival, competencia, titular, minutos, goles, asistencias, tarjetas, fuente (manual/api), api_fixture_id |
+| `player_clauses` | Cláusulas rendimiento: player_id, tipo (partidos/minutos/goles/asistencias), competencia_aplica, minutos_minimos, umbral, monto_activacion, estado (pendiente/activada/pagada) |
 
-## Columnas importantes agregadas
-- `players.gender` — text, default 'M' (agregado 18-04-2026)
-- `players.estado` — text, default 'Activo' — valores: Activo / Cadete / Libre (agregado 23-04-2026)
-- `club_info.contract_pdf_url` — text
-- `agency_contracts.contract_pdf_url` — text
+## Roles de usuario
+| Rol | Perfil | Permisos |
+|-----|--------|----------|
+| admin | Jorge Rueger | Acceso total |
+| agente | Aldo Maldonado | Crear/editar jugadores, contratos, transacciones, docs, RRSS |
+| socio | Marcos González | Crear/editar jugadores, docs, ver finanzas |
+| digitador | Staff eventual | Solo transacciones y subir documentos |
+| visor | Externo/auditor | Solo lectura |
+
+## Edge Functions Supabase
+- **clever-task** (nombre real) → crear usuario en Auth + asignar rol
+  - URL: `https://qgjdphqmwgrkwfbxbyhc.supabase.co/functions/v1/clever-task`
+  - En Usuarios.jsx usar esta URL (no "crear-usuario")
 
 ## Storage Supabase (bucket: player-media)
-- Fotos perfil jugador: `{player_id}/profile_{timestamp}.jpg` ← timestamp para evitar cache
-- Contratos agencia: `contratos/Contrato_NFC_{Jugador}_{año}.pdf`
-- Contratos club: `contratos/Contrato_Club_{Club}_{Jugador}_{año}.pdf`
+- Logo: `logo_nfc_transparent.png` (PNG fondo transparente)
+- Fotos perfil: `{player_id}/profile_{timestamp}.jpg`
+- Contratos agencia: `contratos/{Tipo}_NFC_{Jugador}_{año}.pdf`
+- Contratos club: `contratos/{Tipo}_Club_{Club}_{Jugador}_{año}.pdf`
 - Fotos noticias: `noticias/noticia_{timestamp}.jpg`
-- Logo: `player-media/logo_nfc.JPG`
 
-## Políticas RLS Storage relevantes
-```sql
--- UPDATE necesaria para reemplazar fotos
-create policy "allow_update_storage" on storage.objects
-for update using (bucket_id = 'player-media')
-with check (bucket_id = 'player-media');
-```
+## Módulo de Estadísticas
+- **PlayerStats.jsx** — componente usado en PlayerDetail
+- Con login: tabla completa (partidos, minutos, goles, asistencias, tarjetas, fuente)
+- Sin login: solo campos definidos en `stats_campos_publicos` del jugador
+- Cláusulas: progreso automático, alerta al 75%+, activación automática al alcanzar umbral
+- API-Football: botón sync en ficha, requiere `api_football_id` en players
+- Plan gratuito solo cubre hasta temporada 2024
 
-## Generador de contratos PDF
-- Párrafos justificados
-- Art. 10: compensación Anexo A (default)
-- Art. 11 (opcional): compensación fija USD 150.000 para jugadores con derechos de imagen
-- Arts. 10 y 11 son excluyentes
-- Contrato Tipo disponible desde cualquier página de Documentos
+## Módulo de Pedidos de Botines
+- Pedido múltiple (varios jugadores por compra)
+- Estado: pendiente → entregado (con fecha)
+- Conversión automática UK → US/EU por marca al seleccionar jugador
+- Alerta en Dashboard cuando quedan ≤30 días de botines (2 meses por par)
+- Resumen anual en Dashboard: Elite vs Pro por jugador
 
-## Docs Especiales (PlayersAdmin tab 4)
-3 sub-pestañas:
-1. **Autorización / Poder** — Autorización Exclusiva de Gestión + Poder Especial (dos botones)
-   - Agente externo con nombre y licencia FIFA
-   - Jugadores desde BD con club actual automático
-   - Clubes/ligas opcionales
-   - Comisión configurable o sin comisión
-   - Vigencia con cláusula exoneración (Poder Especial)
-2. **Nómina de Jugadores** — PDF con tabla de jugadores representados
-   - Selección manual con checkboxes (todos seleccionados por defecto)
-   - Selector de columnas: RUT, Posición, Club, Estado (para entregar solo lo necesario)
-   - Estado editable por jugador en el momento (sin afectar BD)
-   - Colores: Activo=verde, Cadete=dorado, Libre=gris
-3. **Declaración Conflicto de Interés** — Declaración jurada FIFA/AFUCH
-   - Sugerencias predefinidas para "exigida por"
-   - 6 declaraciones estándar + campo para agregar adicionales
-   - Espacio para timbre notaría
+## Historial de Contratos
+- **Club:** tabla `club_contracts` con tipos Contrato/Renovación/Préstamo/Cesión
+- **Agencia:** tabla `agency_contracts` con tipos Contrato/Renovación
+- Vista colapsable por jugador en tab Contratos de PlayersAdmin
+- `club_info` deprecated pero mantenida temporalmente
 
-## Generador RRSS (src/pages/RRSS.jsx)
-- 5 plantillas: Bienvenida, Cumpleaños, 1er Contrato, 1er Gol, Renovación
-- Formatos: 1:1 Feed y 9:16 Story
-- Carga jugador desde BD (foto + nombre + club + gender)
-- Género M/F adapta "Bienvenido/a", "representado/a", tag del documento
-- Diseño: foto 3/4 con fade, texto anclado abajo, identidad NFC
-- Descarga PNG 1080px
-
-## Comandos frecuentes
-```bash
-# Local
-cd /Volumes/Respaldos/Desarrollo/nfc-agency
-npm run dev  # → http://localhost:5173
-
-# Deploy — SIEMPRE archivos individuales
-git add src/pages/Archivo.jsx
-git commit -m "descripción"
-git push
-```
+## Generador PDFs
+- Logo: `logo_nfc_transparent.png` — usar formato PNG en addImage
+- URL logo: `https://qgjdphqmwgrkwfbxbyhc.supabase.co/storage/v1/object/public/player-media/logo_nfc_transparent.png`
+- Contratos: Art.10 o Art.11 según si tiene derechos de imagen
 
 ## Lecciones aprendidas — CRÍTICAS
 - **NUNCA copiar src completo** — siempre archivos individuales
-- **NUNCA `echo "" > archivo`** — borra contenido
 - **NUNCA eliminar desde `players`** — cascade borra todo
-- **NUNCA eliminar desde `club_info` sin verificar** — pueden ser duplicados legítimos
+- La vista `players_full_info` usa LATERAL JOIN para traer último contrato activo de `club_contracts`
+- Edge Function se llama `clever-task` en Supabase (no `crear-usuario`)
+- Fotos perfil usan `profile_{timestamp}.jpg` para evitar cache
 - `.env` no va a GitHub
-- Fotos perfil usan `profile_{timestamp}.jpg` para evitar cache de Storage
-- La vista `players_full_info` genera duplicados si un jugador tiene 2 agency_contracts
-- Las vistas Supabase no admiten RLS
-- `src/main.jsx` es el punto de entrada — si se borra el build falla
+- API Football: header es `x-apisports-key` (no x-rapidapi-key)
+- Archivos se entregan organizados por carpeta: src/components/ y src/pages/
 
-## Pendientes al 23-04-2026
-- [ ] Fix tag RRSS: "NUEVO REPRESENTADA" → "NUEVA REPRESENTADA" (género femenino)
-- [ ] Logo NFC en header de PDFs generados
-- [ ] Plantillas RRSS con diseños distintos por evento
-- [ ] Imagen hero landing con foto real
+## Pendientes al 29-04-2026
+- [ ] Campo `estado` en PlayerForm para editar desde la app ✅ YA INCLUIDO
+- [ ] Logo NFC en header de PDFs ✅ RESUELTO
 - [ ] Exportar Anexo A a Word (.docx)
-- [ ] Historial contratos por jugador en ficha admin
-- [ ] HTML standalone generador RRSS
-- [ ] Vincular transacciones importadas por RUT
-- [ ] Campo `estado` (Activo/Cadete/Libre) en PlayerForm para editar desde app
 - [ ] Limpieza fotos antiguas en Storage al cambiar foto perfil
+- [ ] Imagen hero landing con foto real
+- [ ] Plantillas RRSS con diseños distintos por evento
+- [ ] HTML standalone generador RRSS
+- [ ] Upgrade API-Football a plan Starter para temporadas 2025-2026
+- [ ] Verificar funcionamiento historial contratos tras deploy
