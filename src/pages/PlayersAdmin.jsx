@@ -6,6 +6,7 @@ import ClubContractForm from '../components/ClubContractForm'
 import AgencyContractForm from '../components/AgencyContractForm'
 import TransactionForm from '../components/TransactionForm'
 import DocsEspeciales from '../components/DocsEspeciales'
+import { generarReporteCalzadoPDF } from '../lib/generarReporteCalzado'
 
 function fmtDate(d) {
   if (!d) return '—'
@@ -49,6 +50,9 @@ function PedidosTab({ players }) {
   const [shoeSizes, setShoeSizes] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [showReporte, setShowReporte] = useState(false)
+  const [selectedPlayers, setSelectedPlayers] = useState([])
+  const [generando, setGenerando] = useState(false)
   const [msg, setMsg] = useState('')
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
@@ -67,6 +71,7 @@ function PedidosTab({ players }) {
   useEffect(() => {
     loadOrders()
     supabase.from('shoe_sizes').select('*').then(({ data }) => setShoeSizes(data || []))
+    setSelectedPlayers(players.map(p => p.id))
   }, [])
 
   const getConv = (marca, uk) => {
@@ -135,6 +140,26 @@ function PedidosTab({ players }) {
     loadOrders()
   }
 
+  const togglePlayer = (id) => {
+    setSelectedPlayers(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    )
+  }
+
+  const handleGenerarReporte = async () => {
+    if (!selectedPlayers.length) { setMsg('Selecciona al menos un jugador'); return }
+    setGenerando(true)
+    try {
+      const jugadoresSeleccionados = players.filter(p => selectedPlayers.includes(p.id))
+      const doc = generarReporteCalzadoPDF({ jugadores: jugadoresSeleccionados, ordenes: orders })
+      doc.save(`Reporte_Calzado_NFC_${new Date().getFullYear()}.pdf`)
+    } catch (e) {
+      console.error(e)
+      setMsg('Error generando reporte: ' + e.message)
+    }
+    setGenerando(false)
+  }
+
   const playerMap = {}
   players.forEach(p => { playerMap[p.id] = p })
 
@@ -155,11 +180,79 @@ function PedidosTab({ players }) {
 
   return (
     <div>
+      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
         <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontWeight: 600, letterSpacing: 1.5 }}>PEDIDOS DE BOTINES</div>
-        <button className="btn-gold" onClick={openNew}>+ NUEVO PEDIDO</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => setShowReporte(r => !r)}
+            style={{ fontSize: 11, padding: '6px 14px', borderRadius: 3, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all .15s',
+              border: `1px solid rgba(201,168,76,0.3)`,
+              background: showReporte ? 'rgba(201,168,76,0.15)' : 'transparent',
+              color: GOLD }}>
+            📄 REPORTE CALZADO
+          </button>
+          <button className="btn-gold" onClick={openNew}>+ NUEVO PEDIDO</button>
+        </div>
       </div>
-      {msg && <div style={{ marginBottom: 12, fontSize: 13, padding: '8px 12px', borderRadius: 5, background: msg.startsWith('✓') ? 'rgba(74,222,128,0.08)' : 'rgba(248,113,113,0.08)', border: `1px solid ${msg.startsWith('✓') ? 'rgba(74,222,128,0.2)' : 'rgba(248,113,113,0.2)'}`, color: msg.startsWith('✓') ? '#4ade80' : '#f87171' }}>{msg}</div>}
+
+      {msg && (
+        <div style={{ marginBottom: 12, fontSize: 13, padding: '8px 12px', borderRadius: 5,
+          background: msg.startsWith('✓') ? 'rgba(74,222,128,0.08)' : 'rgba(248,113,113,0.08)',
+          border: `1px solid ${msg.startsWith('✓') ? 'rgba(74,222,128,0.2)' : 'rgba(248,113,113,0.2)'}`,
+          color: msg.startsWith('✓') ? '#4ade80' : '#f87171' }}>
+          {msg}
+        </div>
+      )}
+
+      {/* Panel selector reporte */}
+      {showReporte && (
+        <div className="card" style={{ marginBottom: 16, border: '1px solid rgba(201,168,76,0.25)' }}>
+          <div style={{ fontSize: 11, color: GOLD, fontWeight: 600, letterSpacing: 1.5, marginBottom: 12 }}>
+            SELECCIONAR JUGADORES PARA EL REPORTE
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+            <button onClick={() => setSelectedPlayers(players.map(p => p.id))}
+              style={{ fontSize: 11, padding: '4px 12px', borderRadius: 3, border: '1px solid rgba(74,222,128,0.3)', background: 'transparent', color: '#4ade80', cursor: 'pointer', fontFamily: 'inherit' }}>
+              Seleccionar todos
+            </button>
+            <button onClick={() => setSelectedPlayers([])}
+              style={{ fontSize: 11, padding: '4px 12px', borderRadius: 3, border: '1px solid rgba(248,113,113,0.3)', background: 'transparent', color: '#f87171', cursor: 'pointer', fontFamily: 'inherit' }}>
+              Deseleccionar todos
+            </button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 6, marginBottom: 14 }}>
+            {players.sort((a, b) => a.name?.localeCompare(b.name)).map(p => {
+              const sel = selectedPlayers.includes(p.id)
+              const tieneOrdenes = orders.some(o => o.player_id === p.id && o.estado === 'entregado')
+              return (
+                <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderRadius: 5, cursor: 'pointer',
+                  background: sel ? 'rgba(201,168,76,0.1)' : 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${sel ? 'rgba(201,168,76,0.3)' : 'rgba(255,255,255,0.06)'}`,
+                  transition: 'all .15s', opacity: tieneOrdenes ? 1 : 0.5 }}>
+                  <input type="checkbox" checked={sel} onChange={() => togglePlayer(p.id)}
+                    style={{ accentColor: GOLD, width: 14, height: 14 }} />
+                  <div>
+                    <div style={{ fontSize: 12, color: sel ? GOLD : '#fff', fontWeight: 500 }}>{p.name}</div>
+                    {!tieneOrdenes && (
+                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>Sin entregas registradas</div>
+                    )}
+                  </div>
+                </label>
+              )
+            })}
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button className="btn-gold" onClick={handleGenerarReporte} disabled={generando || !selectedPlayers.length}>
+              {generando ? 'GENERANDO...' : `⬇ GENERAR PDF (${selectedPlayers.length} jugador${selectedPlayers.length !== 1 ? 'es' : ''})`}
+            </button>
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>
+              Solo incluye botines con estado "Entregado"
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Formulario nuevo pedido */}
       {showForm && (
         <div className="card" style={{ marginBottom: 20, border: '1px solid rgba(201,168,76,0.25)' }}>
           <div style={{ fontSize: 11, color: GOLD, fontWeight: 600, letterSpacing: 1.5, marginBottom: 16 }}>NUEVO PEDIDO</div>
@@ -186,7 +279,12 @@ function PedidosTab({ players }) {
                   </div>
                   <div><label style={LABEL}>MARCA</label><select style={INPUT} value={item.marca} onChange={e => updateItem(idx, 'marca', e.target.value)}>{MARCAS.map(m => <option key={m} value={m}>{MARCAS_LABEL[m]}</option>)}</select></div>
                   <div><label style={LABEL}>TALLA UK</label><input style={INPUT} type="number" step="0.5" value={item.uk} onChange={e => updateItem(idx, 'uk', e.target.value)} placeholder="8.0" /></div>
-                  {conv && <div style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 6, padding: '8px 12px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}><div style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', marginBottom: 3 }}>CONV.</div><div style={{ display: 'flex', gap: 8, fontSize: 12 }}><span style={{ color: GOLD }}>US {conv.us}</span><span style={{ color: 'rgba(255,255,255,0.4)' }}>EU {conv.eu}</span></div></div>}
+                  {conv && (
+                    <div style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 6, padding: '8px 12px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                      <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', marginBottom: 3 }}>CONV.</div>
+                      <div style={{ display: 'flex', gap: 8, fontSize: 12 }}><span style={{ color: GOLD }}>US {conv.us}</span><span style={{ color: 'rgba(255,255,255,0.4)' }}>EU {conv.eu}</span></div>
+                    </div>
+                  )}
                   <div><label style={LABEL}>MODELO</label><input style={INPUT} value={item.modelo} onChange={e => updateItem(idx, 'modelo', e.target.value)} placeholder="Predator..." /></div>
                   <div><label style={LABEL}>SUELA</label><select style={INPUT} value={item.suela} onChange={e => updateItem(idx, 'suela', e.target.value)}>{SUELAS.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
                   <div><label style={LABEL}>CATEGORÍA</label><select style={INPUT} value={item.categoria} onChange={e => updateItem(idx, 'categoria', e.target.value)}>{CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
@@ -203,13 +301,24 @@ function PedidosTab({ players }) {
           </div>
         </div>
       )}
+
+      {/* Filtros */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar jugador..." style={{ ...INPUT, width: 200 }} />
-        {['todos', 'pendiente', 'entregado'].map(e => <button key={e} onClick={() => setFilterEstado(e)} style={{ ...TAB_STYLE(filterEstado === e), padding: '5px 14px' }}>{e.toUpperCase()}</button>)}
+        {['todos', 'pendiente', 'entregado'].map(e => (
+          <button key={e} onClick={() => setFilterEstado(e)} style={{ ...TAB_STYLE(filterEstado === e), padding: '5px 14px' }}>
+            {e.toUpperCase()}
+          </button>
+        ))}
       </div>
-      {loading ? <div style={{ textAlign: 'center', padding: 40, color: GOLD, fontFamily: 'Bebas Neue', letterSpacing: 2 }}>CARGANDO...</div>
-        : groupList.length === 0 ? <div className="card" style={{ textAlign: 'center', color: 'rgba(255,255,255,0.25)', padding: 32 }}>Sin pedidos registrados</div>
-        : groupList.map((grp, gi) => {
+
+      {/* Pedidos agrupados */}
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: 40, color: GOLD, fontFamily: 'Bebas Neue', letterSpacing: 2 }}>CARGANDO...</div>
+      ) : groupList.length === 0 ? (
+        <div className="card" style={{ textAlign: 'center', color: 'rgba(255,255,255,0.25)', padding: 32 }}>Sin pedidos registrados</div>
+      ) : (
+        groupList.map((grp, gi) => {
           const allOk = grp.items.every(i => i.estado === 'entregado')
           const pendientes = grp.items.filter(i => i.estado === 'pendiente').length
           return (
@@ -220,11 +329,18 @@ function PedidosTab({ players }) {
                   <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>{grp.items.length} item(s) · {grp.items.reduce((a, i) => a + (i.pares || 0), 0)} pares</span>
                   <span className={`pill ${allOk ? 'pill-ok' : 'pill-warn'}`}>{allOk ? '✓ ENTREGADO' : `${pendientes} PENDIENTE(S)`}</span>
                 </div>
-                {pendientes > 0 && grp.group_id && <button onClick={() => handleEntregarGrupo(grp.group_id)} style={{ fontSize: 10, padding: '4px 10px', borderRadius: 4, border: '1px solid rgba(74,222,128,0.4)', background: 'rgba(74,222,128,0.08)', color: '#4ade80', cursor: 'pointer', fontFamily: 'inherit' }}>✓ Marcar todo entregado</button>}
+                {pendientes > 0 && grp.group_id && (
+                  <button onClick={() => handleEntregarGrupo(grp.group_id)}
+                    style={{ fontSize: 10, padding: '4px 10px', borderRadius: 4, border: '1px solid rgba(74,222,128,0.4)', background: 'rgba(74,222,128,0.08)', color: '#4ade80', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    ✓ Marcar todo entregado
+                  </button>
+                )}
               </div>
               <div style={{ overflowX: 'auto' }}>
                 <table>
-                  <thead><tr><th>Jugador</th><th>Marca</th><th>UK</th><th>US</th><th>EU</th><th>Modelo</th><th>Suela</th><th>Cat.</th><th>Pares</th><th>Estado</th><th>F.Entrega</th><th>Acc.</th></tr></thead>
+                  <thead>
+                    <tr><th>Jugador</th><th>Marca</th><th>UK</th><th>US</th><th>EU</th><th>Modelo</th><th>Suela</th><th>Cat.</th><th>Pares</th><th>Estado</th><th>F.Entrega</th><th>Acc.</th></tr>
+                  </thead>
                   <tbody>
                     {grp.items.map(o => {
                       const p = playerMap[o.player_id]
@@ -240,10 +356,14 @@ function PedidosTab({ players }) {
                           <td style={{ textAlign: 'center' }}>{o.pares}</td>
                           <td><span className={`pill ${o.estado === 'entregado' ? 'pill-ok' : 'pill-warn'}`}>{o.estado === 'entregado' ? '✓' : 'PEND.'}</span></td>
                           <td style={{ whiteSpace: 'nowrap', fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>{o.fecha_entrega ? fmtDate(o.fecha_entrega) : '—'}</td>
-                          <td><div style={{ display: 'flex', gap: 4 }}>
-                            {o.estado === 'pendiente' && <button onClick={() => handleEntregar(o.id)} style={{ fontSize: 10, padding: '3px 6px', borderRadius: 3, border: '1px solid rgba(74,222,128,0.3)', background: 'transparent', color: '#4ade80', cursor: 'pointer', fontFamily: 'inherit' }}>✓</button>}
-                            <button onClick={() => handleDelete(o.id)} style={{ fontSize: 10, padding: '3px 6px', borderRadius: 3, border: '1px solid rgba(248,113,113,0.3)', background: 'transparent', color: '#f87171', cursor: 'pointer', fontFamily: 'inherit' }}>✕</button>
-                          </div></td>
+                          <td>
+                            <div style={{ display: 'flex', gap: 4 }}>
+                              {o.estado === 'pendiente' && (
+                                <button onClick={() => handleEntregar(o.id)} style={{ fontSize: 10, padding: '3px 6px', borderRadius: 3, border: '1px solid rgba(74,222,128,0.3)', background: 'transparent', color: '#4ade80', cursor: 'pointer', fontFamily: 'inherit' }}>✓</button>
+                              )}
+                              <button onClick={() => handleDelete(o.id)} style={{ fontSize: 10, padding: '3px 6px', borderRadius: 3, border: '1px solid rgba(248,113,113,0.3)', background: 'transparent', color: '#f87171', cursor: 'pointer', fontFamily: 'inherit' }}>✕</button>
+                            </div>
+                          </td>
                         </tr>
                       )
                     })}
@@ -252,7 +372,10 @@ function PedidosTab({ players }) {
               </div>
             </div>
           )
-        })}
+        })
+      )}
+
+      {/* Tabla referencia tallas */}
       <div className="card" style={{ marginTop: 16 }}>
         <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontWeight: 600, letterSpacing: 1.5, marginBottom: 12 }}>TALLAS POR JUGADOR</div>
         <div style={{ overflowX: 'auto' }}>
@@ -275,7 +398,9 @@ function PedidosTab({ players }) {
                   </tr>
                 )
               })}
-              {!players.filter(p => p.shoe_size).length && <tr><td colSpan={8} style={{ textAlign: 'center', color: 'rgba(255,255,255,0.25)', padding: 16 }}>Sin tallas registradas</td></tr>}
+              {!players.filter(p => p.shoe_size).length && (
+                <tr><td colSpan={8} style={{ textAlign: 'center', color: 'rgba(255,255,255,0.25)', padding: 16 }}>Sin tallas registradas</td></tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -314,7 +439,6 @@ export default function PlayersAdmin() {
 
   useEffect(() => { load() }, [])
 
-  // Contrato activo más reciente por jugador (para la tabla Plantel)
   const activeClubMap = {}
   clubContracts.forEach(c => {
     if (!activeClubMap[c.player_id] && c.contract_active) activeClubMap[c.player_id] = c
@@ -392,7 +516,10 @@ export default function PlayersAdmin() {
                       <td><span className={`pill ${ci.contract_active ? 'pill-ok' : 'pill-off'}`}>{ci.contract_active ? 'ACTIVO' : '—'}</span></td>
                       <td>
                         <button onClick={async () => { await supabase.from('players').update({ mostrar_en_landing: !p.mostrar_en_landing }).eq('id', p.id); load() }}
-                          style={{ fontSize: 10, padding: '3px 8px', borderRadius: 3, cursor: 'pointer', fontFamily: 'inherit', border: p.mostrar_en_landing ? '1px solid rgba(74,222,128,0.4)' : '1px solid rgba(255,255,255,0.1)', background: p.mostrar_en_landing ? 'rgba(74,222,128,0.1)' : 'transparent', color: p.mostrar_en_landing ? '#4ade80' : 'rgba(255,255,255,0.3)' }}>
+                          style={{ fontSize: 10, padding: '3px 8px', borderRadius: 3, cursor: 'pointer', fontFamily: 'inherit',
+                            border: p.mostrar_en_landing ? '1px solid rgba(74,222,128,0.4)' : '1px solid rgba(255,255,255,0.1)',
+                            background: p.mostrar_en_landing ? 'rgba(74,222,128,0.1)' : 'transparent',
+                            color: p.mostrar_en_landing ? '#4ade80' : 'rgba(255,255,255,0.3)' }}>
                           {p.mostrar_en_landing ? '✓ VISIBLE' : 'OCULTO'}
                         </button>
                       </td>
@@ -417,10 +544,9 @@ export default function PlayersAdmin() {
         </>
       )}
 
-      {/* CONTRATOS — historial por jugador */}
+      {/* CONTRATOS */}
       {tab === 'contracts' && (
         <>
-          {/* Historial contratos club */}
           <div className="section-title">HISTORIAL CONTRATOS CON CLUBES</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
             {players.map(p => {
@@ -434,9 +560,7 @@ export default function PlayersAdmin() {
                     <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                       <span style={{ fontWeight: 600, color: '#fff', fontSize: 13 }}>{p.name}</span>
                       <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>{contratos.length} contrato(s)</span>
-                      {contratos.filter(c => c.contract_active).length > 0 && (
-                        <span className="pill pill-ok">ACTIVO</span>
-                      )}
+                      {contratos.filter(c => c.contract_active).length > 0 && <span className="pill pill-ok">ACTIVO</span>}
                     </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                       <button onClick={e => { e.stopPropagation(); setModal({ type: 'club', data: null, playerId: p.id, playerName: p.name }) }}
@@ -484,7 +608,6 @@ export default function PlayersAdmin() {
             {!clubContracts.length && <div className="card" style={{ textAlign: 'center', color: 'rgba(255,255,255,0.25)', padding: 24 }}>Sin contratos de club registrados</div>}
           </div>
 
-          {/* Historial contratos agencia */}
           <div className="section-title">HISTORIAL CONTRATOS CON AGENCIA</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {players.map(p => {
