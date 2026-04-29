@@ -14,7 +14,8 @@ function fmt$(n) {
 }
 function fmtDate(d) {
   if (!d) return '—'
-  return new Date(d).toLocaleDateString('es-CL', { day:'2-digit', month:'short', year:'numeric' })
+  const fecha = new Date(d.includes('T') ? d : d + 'T12:00:00')
+  return fecha.toLocaleDateString('es-CL', { day:'2-digit', month:'short', year:'numeric' })
 }
 function age(bd) {
   if (!bd) return '—'

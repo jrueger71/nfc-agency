@@ -15,7 +15,8 @@ const LABEL = { fontSize:10, color:'rgba(255,255,255,0.45)', letterSpacing:1, di
 
 function fmtDateLong(d) {
   if (!d) return ''
-  return new Date(d).toLocaleDateString('es-CL', { day:'numeric', month:'long', year:'numeric' })
+  const fecha = new Date(d.includes('T') ? d : d + 'T12:00:00')
+  return fecha.toLocaleDateString('es-CL', { day:'numeric', month:'long', year:'numeric' })
 }
 
 function isMinor(fechaNac) {

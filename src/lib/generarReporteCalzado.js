@@ -22,7 +22,8 @@ const ZAPATOS_SUBTYPES = [
 
 function fmtDate(d) {
   if (!d) return '—'
-  return new Date(d).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  const fecha = new Date(d.includes('T') ? d : d + 'T12:00:00')
+  return fecha.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
 function fmtCLP(n) {

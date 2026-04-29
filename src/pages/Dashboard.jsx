@@ -13,7 +13,8 @@ function fmt$(n) {
 }
 function fmtDate(d) {
   if (!d) return '—'
-  return new Date(d).toLocaleDateString('es-CL', { day:'2-digit', month:'short', year:'numeric' })
+  const fecha = new Date(d.includes('T') ? d : d + 'T12:00:00')
+  return fecha.toLocaleDateString('es-CL', { day:'2-digit', month:'short', year:'numeric' })
 }
 const GOLD = '#C9A84C'
 const PIE_COLORS = ['#C9A84C','#1B2B5E','#243580','#7a6025','#e8c96a','#555']

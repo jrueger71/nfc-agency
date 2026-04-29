@@ -10,7 +10,8 @@ import { generarReporteCalzadoPDF } from '../lib/generarReporteCalzado'
 
 function fmtDate(d) {
   if (!d) return '—'
-  return new Date(d).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' })
+  const fecha = new Date(d.includes('T') ? d : d + 'T12:00:00')
+  return fecha.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 function fmt$(n) {
   if (!n && n !== 0) return '—'
