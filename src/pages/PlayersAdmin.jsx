@@ -150,8 +150,20 @@ function PedidosTab({ players }) {
     if (!selectedPlayers.length) { setMsg('Selecciona al menos un jugador'); return }
     setGenerando(true)
     try {
+      // Cargar transacciones de zapatos de los jugadores seleccionados
+      const { data: txData } = await supabase
+        .from('transactions')
+        .select('*')
+        .in('player_id', selectedPlayers)
+        .eq('type', 'expense')
+        .or('subtype.ilike.%zapatos%,subtype.ilike.%botines%,subtype.ilike.%Zapatos%,subtype.ilike.%Botines%')
+   
       const jugadoresSeleccionados = players.filter(p => selectedPlayers.includes(p.id))
-      const doc = generarReporteCalzadoPDF({ jugadores: jugadoresSeleccionados, ordenes: orders })
+      const doc = generarReporteCalzadoPDF({
+        jugadores: jugadoresSeleccionados,
+        ordenes: orders,
+        transacciones: txData || [],
+      })
       doc.save(`Reporte_Calzado_NFC_${new Date().getFullYear()}.pdf`)
     } catch (e) {
       console.error(e)
