@@ -452,9 +452,6 @@ export default function PlayerStats({ player, canEdit = false }) {
                         </optgroup>
                       ))
                     }
-                    {/* Opción manual para competencias internacionales */}
-                    <option value="Internacional">Internacional</option>
-                    <option value="Amistoso">Amistoso</option>
                   </select>
                   {statForm.competencia && (
                     <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginTop: 3 }}>
@@ -633,8 +630,6 @@ export default function PlayerStats({ player, canEdit = false }) {
                     {competenciasFiltradas.map(c => (
                       <option key={c.id} value={compLabel(c)}>{compLabel(c)}</option>
                     ))}
-                    <option value="Internacional">Internacional</option>
-                    <option value="Amistoso">Amistoso</option>
                   </select>
                 </div>
                 {clauseForm.tipo === 'partidos' && (
