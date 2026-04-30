@@ -13,15 +13,14 @@ const LABEL = {
   letterSpacing: 1, display: 'block', marginBottom: 4, fontWeight: 600,
 }
 
-const COMPETENCIAS = ['Liga', 'Copa Chile', 'Internacional', 'Cadete', 'Amistoso']
 const TIPOS_CLAUSULA = ['partidos', 'minutos', 'goles', 'asistencias']
 const TEMPORADA_ACTUAL = new Date().getFullYear().toString()
-
 const API_KEY = import.meta.env.VITE_API_FOOTBALL_KEY
 
 function fmtDate(d) {
   if (!d) return '—'
-  return new Date(d).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' })
+  const fecha = new Date(d.includes('T') ? d : d + 'T12:00:00')
+  return fecha.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
 function fmt$(n) {
@@ -32,28 +31,40 @@ function fmt$(n) {
   return '$' + v.toFixed(0)
 }
 
-// Calcula el progreso de una cláusula según los stats del jugador
+// Color por competencia — dinámico según nombre
+function compColor(nombre) {
+  const n = nombre?.toLowerCase() || ''
+  if (n.includes('primera') || n.includes('liga') && !n.includes('femenina') && !n.includes('ascenso') && !n.includes('segunda')) return { bg: 'rgba(201,168,76,0.15)', color: '#C9A84C' }
+  if (n.includes('femenina')) return { bg: 'rgba(244,114,182,0.15)', color: '#f472b6' }
+  if (n.includes('ascenso')) return { bg: 'rgba(251,146,60,0.15)', color: '#fb923c' }
+  if (n.includes('segunda')) return { bg: 'rgba(167,139,250,0.15)', color: '#a78bfa' }
+  if (n.includes('copa')) return { bg: 'rgba(96,165,250,0.15)', color: '#60a5fa' }
+  if (n.includes('formativo') || n.includes('sub')) return { bg: 'rgba(52,211,153,0.15)', color: '#34d399' }
+  if (n.includes('internacional')) return { bg: 'rgba(52,211,153,0.15)', color: '#34d399' }
+  if (n.includes('amistoso')) return { bg: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)' }
+  return { bg: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)' }
+}
+
 function calcularProgreso(clausula, stats) {
   const statsAplican = stats.filter(s => {
     if (clausula.competencia_aplica !== 'Todas' && s.competencia !== clausula.competencia_aplica) return false
     if (clausula.tipo === 'partidos' && s.minutos < (clausula.minutos_minimos || 0)) return false
     return true
   })
-
   let valor = 0
   if (clausula.tipo === 'partidos') valor = statsAplican.length
   else if (clausula.tipo === 'minutos') valor = statsAplican.reduce((a, s) => a + (s.minutos || 0), 0)
   else if (clausula.tipo === 'goles') valor = statsAplican.reduce((a, s) => a + (s.goles || 0), 0)
   else if (clausula.tipo === 'asistencias') valor = statsAplican.reduce((a, s) => a + (s.asistencias || 0), 0)
-
   return { valor, porcentaje: Math.min((valor / clausula.umbral) * 100, 100) }
 }
 
 export default function PlayerStats({ player, canEdit = false }) {
   const [stats, setStats] = useState([])
   const [clauses, setClauses] = useState([])
+  const [competitions, setCompetitions] = useState([]) // desde Supabase
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState('stats') // 'stats' | 'clausulas'
+  const [tab, setTab] = useState('stats')
   const [showStatForm, setShowStatForm] = useState(false)
   const [showClauseForm, setShowClauseForm] = useState(false)
   const [editStat, setEditStat] = useState(null)
@@ -65,16 +76,14 @@ export default function PlayerStats({ player, canEdit = false }) {
   const [filterTemporada, setFilterTemporada] = useState(TEMPORADA_ACTUAL)
   const [filterComp, setFilterComp] = useState('Todas')
 
-  // Form stat
   const [statForm, setStatForm] = useState({
     temporada: TEMPORADA_ACTUAL, fecha: new Date().toISOString().split('T')[0],
-    rival: '', competencia: 'Liga', titular: true,
+    rival: '', competencia: '', titular: true,
     minutos: 90, goles: 0, asistencias: 0,
     tarjeta_amarilla: false, tarjeta_roja: false, notas: '',
   })
   const setSF = (k, v) => setStatForm(f => ({ ...f, [k]: v }))
 
-  // Form clausula
   const [clauseForm, setClauseForm] = useState({
     descripcion: '', tipo: 'partidos', competencia_aplica: 'Todas',
     minutos_minimos: 45, umbral: 10, monto_activacion: '',
@@ -82,22 +91,46 @@ export default function PlayerStats({ player, canEdit = false }) {
   })
   const setCF = (k, v) => setClauseForm(f => ({ ...f, [k]: v }))
 
+  // Competencias filtradas por género del jugador y año actual
+  const competenciasFiltradas = competitions.filter(c => {
+    if (c.genero !== 'Ambos' && c.genero !== player.gender) return false
+    return true
+  })
+
+  // Etiqueta de competencia: "Liga Segunda División 2026"
+  const compLabel = (c) => `${c.nombre} ${c.año}`
+
   const load = async () => {
     setLoading(true)
-    const [{ data: s }, { data: c }] = await Promise.all([
+    const [{ data: s }, { data: cl }, { data: comp }] = await Promise.all([
       supabase.from('player_stats').select('*').eq('player_id', player.id).order('fecha', { ascending: false }),
       supabase.from('player_clauses').select('*').eq('player_id', player.id).order('created_at'),
+      supabase.from('competitions').select('*').eq('activa', true).order('año', { ascending: false }).order('nombre'),
     ])
     setStats(s || [])
-    setClauses(c || [])
+    setClauses(cl || [])
+    setCompetitions(comp || [])
+    // Pre-seleccionar primera competencia disponible si no hay una seleccionada
+    if (comp && comp.length > 0 && !statForm.competencia) {
+      const primera = comp.find(c => c.genero === 'Ambos' || c.genero === player.gender)
+      if (primera) setSF('competencia', compLabel(primera))
+    }
     setLoading(false)
   }
 
   useEffect(() => { load() }, [player.id])
 
-  // ── Guardar stat ────────────────────────────────────────────────────────────
+  // Actualizar competencia por defecto cuando carguen las competencias
+  useEffect(() => {
+    if (competitions.length > 0 && !statForm.competencia) {
+      const primera = competenciasFiltradas[0]
+      if (primera) setStatForm(f => ({ ...f, competencia: compLabel(primera) }))
+    }
+  }, [competitions])
+
   const handleSaveStat = async () => {
     if (!statForm.rival) { setMsg('Ingresa el rival'); return }
+    if (!statForm.competencia) { setMsg('Selecciona una competencia'); return }
     setSaving(true); setMsg('')
     const payload = {
       player_id: player.id,
@@ -126,19 +159,14 @@ export default function PlayerStats({ player, canEdit = false }) {
     setShowStatForm(false); setEditStat(null)
     load()
     setTimeout(() => setMsg(''), 3000)
-
-    // Verificar cláusulas automáticamente
     await checkClauses(payload)
   }
 
-  // ── Verificar y activar cláusulas ───────────────────────────────────────────
   const checkClauses = async (newStat) => {
     const { data: allStats } = await supabase.from('player_stats').select('*').eq('player_id', player.id)
     const { data: pendingClauses } = await supabase.from('player_clauses').select('*')
       .eq('player_id', player.id).eq('estado', 'pendiente')
-
     if (!pendingClauses || !allStats) return
-
     for (const c of pendingClauses) {
       const { valor } = calcularProgreso(c, allStats)
       if (valor >= c.umbral) {
@@ -151,7 +179,6 @@ export default function PlayerStats({ player, canEdit = false }) {
     load()
   }
 
-  // ── Guardar cláusula ────────────────────────────────────────────────────────
   const handleSaveClause = async () => {
     if (!clauseForm.descripcion) { setMsg('Ingresa una descripción'); return }
     setSaving(true); setMsg('')
@@ -209,7 +236,6 @@ export default function PlayerStats({ player, canEdit = false }) {
     load()
   }
 
-  // ── Sincronizar con API-Football ────────────────────────────────────────────
   const handleSync = async () => {
     if (!player.api_football_id) {
       setSyncMsg('Este jugador no tiene ID de API-Football. Agrégalo en Editar Jugador.')
@@ -236,14 +262,11 @@ export default function PlayerStats({ player, canEdit = false }) {
         if (leagueName.toLowerCase().includes('primera') || leagueName.toLowerCase().includes('chile')) competencia = 'Liga'
         else if (leagueName.toLowerCase().includes('copa')) competencia = 'Copa Chile'
 
-        // Solo importar si hay partidos jugados
         const appearances = st.games?.appearences || 0
         if (!appearances) continue
 
-        // Crear un registro resumen por liga/temporada
         const fixtureId = st.league?.id ? parseInt(`${st.league.id}${season}`) : null
 
-        // Verificar si ya existe
         if (fixtureId) {
           const { data: existing } = await supabase.from('player_stats')
             .select('id').eq('player_id', player.id).eq('api_fixture_id', fixtureId).single()
@@ -251,19 +274,15 @@ export default function PlayerStats({ player, canEdit = false }) {
         }
 
         const payload = {
-          player_id: player.id,
-          temporada: season,
+          player_id: player.id, temporada: season,
           fecha: `${season}-01-01`,
           rival: `Resumen ${leagueName} ${season}`,
-          competencia,
-          titular: true,
+          competencia, titular: true,
           minutos: st.games?.minutes || 0,
           goles: st.goals?.total || 0,
           asistencias: st.goals?.assists || 0,
-          tarjeta_amarilla: false,
-          tarjeta_roja: false,
-          fuente: 'api',
-          api_fixture_id: fixtureId,
+          tarjeta_amarilla: false, tarjeta_roja: false,
+          fuente: 'api', api_fixture_id: fixtureId,
           notas: `Importado desde API-Football. Partidos: ${appearances}. Titular: ${st.games?.lineups || 0}`,
         }
         await supabase.from('player_stats').insert(payload)
@@ -281,7 +300,9 @@ export default function PlayerStats({ player, canEdit = false }) {
     setTimeout(() => setSyncMsg(''), 5000)
   }
 
-  // ── Filtros y totales ───────────────────────────────────────────────────────
+  // Competencias únicas presentes en los stats del jugador (para filtros)
+  const competenciasEnStats = ['Todas', ...new Set(stats.map(s => s.competencia).filter(Boolean))]
+
   const temporadas = [...new Set(stats.map(s => s.temporada))].sort((a, b) => b.localeCompare(a))
   if (!temporadas.includes(TEMPORADA_ACTUAL)) temporadas.unshift(TEMPORADA_ACTUAL)
 
@@ -309,6 +330,17 @@ export default function PlayerStats({ player, canEdit = false }) {
     border: active ? `1px solid ${GOLD}` : '1px solid rgba(201,168,76,0.2)',
   })
 
+  const resetStatForm = () => {
+    const primera = competenciasFiltradas[0]
+    setStatForm({
+      temporada: TEMPORADA_ACTUAL,
+      fecha: new Date().toISOString().split('T')[0],
+      rival: '', competencia: primera ? compLabel(primera) : '',
+      titular: true, minutos: 90, goles: 0, asistencias: 0,
+      tarjeta_amarilla: false, tarjeta_roja: false, notas: '',
+    })
+  }
+
   if (loading) return (
     <div style={{ textAlign: 'center', padding: 32, color: GOLD, fontFamily: 'Bebas Neue', letterSpacing: 2 }}>
       CARGANDO ESTADÍSTICAS...
@@ -331,7 +363,7 @@ export default function PlayerStats({ player, canEdit = false }) {
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {tab === 'stats' && (
               <>
-                <button className="btn-gold" onClick={() => { setEditStat(null); setStatForm({ temporada: TEMPORADA_ACTUAL, fecha: new Date().toISOString().split('T')[0], rival: '', competencia: 'Liga', titular: true, minutos: 90, goles: 0, asistencias: 0, tarjeta_amarilla: false, tarjeta_roja: false, notas: '' }); setShowStatForm(true) }}>
+                <button className="btn-gold" onClick={() => { setEditStat(null); resetStatForm(); setShowStatForm(true) }}>
                   + PARTIDO
                 </button>
                 <button onClick={handleSync} disabled={syncing}
@@ -341,7 +373,11 @@ export default function PlayerStats({ player, canEdit = false }) {
               </>
             )}
             {tab === 'clausulas' && (
-              <button className="btn-gold" onClick={() => { setEditClause(null); setClauseForm({ descripcion: '', tipo: 'partidos', competencia_aplica: 'Todas', minutos_minimos: 45, umbral: 10, monto_activacion: '', estado: 'pendiente', notas: '' }); setShowClauseForm(true) }}>
+              <button className="btn-gold" onClick={() => {
+                setEditClause(null)
+                setClauseForm({ descripcion: '', tipo: 'partidos', competencia_aplica: 'Todas', minutos_minimos: 45, umbral: 10, monto_activacion: '', estado: 'pendiente', notas: '' })
+                setShowClauseForm(true)
+              }}>
                 + CLÁUSULA
               </button>
             )}
@@ -389,11 +425,42 @@ export default function PlayerStats({ player, canEdit = false }) {
                   <label style={LABEL}>RIVAL</label>
                   <input style={INPUT} value={statForm.rival} onChange={e => setSF('rival', e.target.value)} placeholder="Colo-Colo, U. Católica..." />
                 </div>
-                <div>
+                <div style={{ gridColumn: '1 / -1' }}>
                   <label style={LABEL}>COMPETENCIA</label>
                   <select style={INPUT} value={statForm.competencia} onChange={e => setSF('competencia', e.target.value)}>
-                    {COMPETENCIAS.map(c => <option key={c} value={c}>{c}</option>)}
+                    <option value="">— Seleccionar —</option>
+                    {/* Competencias del año actual primero */}
+                    {competenciasFiltradas
+                      .filter(c => c.año === parseInt(TEMPORADA_ACTUAL))
+                      .map(c => (
+                        <option key={c.id} value={compLabel(c)}>{compLabel(c)}</option>
+                      ))
+                    }
+                    {/* Años anteriores agrupados */}
+                    {[...new Set(competenciasFiltradas
+                      .filter(c => c.año !== parseInt(TEMPORADA_ACTUAL))
+                      .map(c => c.año))]
+                      .sort((a, b) => b - a)
+                      .map(año => (
+                        <optgroup key={año} label={`── ${año} ──`}>
+                          {competenciasFiltradas
+                            .filter(c => c.año === año)
+                            .map(c => (
+                              <option key={c.id} value={compLabel(c)}>{compLabel(c)}</option>
+                            ))
+                          }
+                        </optgroup>
+                      ))
+                    }
+                    {/* Opción manual para competencias internacionales */}
+                    <option value="Internacional">Internacional</option>
+                    <option value="Amistoso">Amistoso</option>
                   </select>
+                  {statForm.competencia && (
+                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginTop: 3 }}>
+                      ✓ {statForm.competencia}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label style={LABEL}>MINUTOS</label>
@@ -442,10 +509,10 @@ export default function PlayerStats({ player, canEdit = false }) {
               <option value="">Todas las temporadas</option>
               {temporadas.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
-            {['Todas', ...COMPETENCIAS].map(c => (
+            {competenciasEnStats.map(c => (
               <button key={c} onClick={() => setFilterComp(c)}
                 style={{ ...TAB(filterComp === c), padding: '4px 12px', fontSize: 10 }}>
-                {c}
+                {c === 'Todas' ? 'Todas' : c.replace(/\s\d{4}$/, '')} {/* Quita el año en los botones */}
               </button>
             ))}
           </div>
@@ -484,54 +551,54 @@ export default function PlayerStats({ player, canEdit = false }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {statsFiltradas.map(s => (
-                    <tr key={s.id}>
-                      <td style={{ whiteSpace: 'nowrap', fontSize: 11 }}>{fmtDate(s.fecha)}</td>
-                      <td style={{ color: '#fff', fontWeight: 500 }}>{s.rival}</td>
-                      <td>
-                        <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, fontWeight: 600,
-                          background: s.competencia === 'Liga' ? 'rgba(201,168,76,0.15)' :
-                            s.competencia === 'Copa Chile' ? 'rgba(96,165,250,0.15)' :
-                            s.competencia === 'Internacional' ? 'rgba(52,211,153,0.15)' : 'rgba(255,255,255,0.06)',
-                          color: s.competencia === 'Liga' ? GOLD :
-                            s.competencia === 'Copa Chile' ? '#60a5fa' :
-                            s.competencia === 'Internacional' ? '#34d399' : 'rgba(255,255,255,0.5)' }}>
-                          {s.competencia}
-                        </span>
-                      </td>
-                      <td style={{ textAlign: 'center', color: s.titular ? '#4ade80' : 'rgba(255,255,255,0.3)', fontSize: 12 }}>
-                        {s.titular ? '●' : '○'}
-                      </td>
-                      <td style={{ textAlign: 'center', color: GOLD, fontWeight: 600 }}>{s.minutos}'</td>
-                      <td style={{ textAlign: 'center', color: s.goles > 0 ? '#4ade80' : 'rgba(255,255,255,0.3)', fontWeight: s.goles > 0 ? 700 : 400 }}>{s.goles}</td>
-                      <td style={{ textAlign: 'center', color: s.asistencias > 0 ? '#60a5fa' : 'rgba(255,255,255,0.3)', fontWeight: s.asistencias > 0 ? 700 : 400 }}>{s.asistencias}</td>
-                      <td style={{ textAlign: 'center' }}>
-                        {s.tarjeta_roja ? '🟥' : s.tarjeta_amarilla ? '🟨' : '—'}
-                      </td>
-                      <td>
-                        <span style={{ fontSize: 9, padding: '2px 5px', borderRadius: 3,
-                          background: s.fuente === 'api' ? 'rgba(96,165,250,0.1)' : 'rgba(255,255,255,0.04)',
-                          color: s.fuente === 'api' ? '#60a5fa' : 'rgba(255,255,255,0.3)',
-                          border: `1px solid ${s.fuente === 'api' ? 'rgba(96,165,250,0.2)' : 'rgba(255,255,255,0.06)'}` }}>
-                          {s.fuente === 'api' ? 'API' : 'Manual'}
-                        </span>
-                      </td>
-                      {canEdit && (
+                  {statsFiltradas.map(s => {
+                    const { bg, color } = compColor(s.competencia)
+                    // Mostrar nombre corto (sin año) en la tabla
+                    const compNombre = s.competencia?.replace(/\s\d{4}$/, '') || s.competencia
+                    return (
+                      <tr key={s.id}>
+                        <td style={{ whiteSpace: 'nowrap', fontSize: 11 }}>{fmtDate(s.fecha)}</td>
+                        <td style={{ color: '#fff', fontWeight: 500 }}>{s.rival}</td>
                         <td>
-                          <div style={{ display: 'flex', gap: 4 }}>
-                            <button onClick={() => openEditStat(s)}
-                              style={{ fontSize: 10, padding: '2px 6px', borderRadius: 3, border: `1px solid rgba(201,168,76,0.3)`, background: 'transparent', color: GOLD, cursor: 'pointer', fontFamily: 'inherit' }}>
-                              Editar
-                            </button>
-                            <button onClick={() => handleDeleteStat(s.id)}
-                              style={{ fontSize: 10, padding: '2px 6px', borderRadius: 3, border: '1px solid rgba(248,113,113,0.3)', background: 'transparent', color: '#f87171', cursor: 'pointer', fontFamily: 'inherit' }}>
-                              ✕
-                            </button>
-                          </div>
+                          <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, fontWeight: 600,
+                            background: bg, color }} title={s.competencia}>
+                            {compNombre}
+                          </span>
                         </td>
-                      )}
-                    </tr>
-                  ))}
+                        <td style={{ textAlign: 'center', color: s.titular ? '#4ade80' : 'rgba(255,255,255,0.3)', fontSize: 12 }}>
+                          {s.titular ? '●' : '○'}
+                        </td>
+                        <td style={{ textAlign: 'center', color: GOLD, fontWeight: 600 }}>{s.minutos}'</td>
+                        <td style={{ textAlign: 'center', color: s.goles > 0 ? '#4ade80' : 'rgba(255,255,255,0.3)', fontWeight: s.goles > 0 ? 700 : 400 }}>{s.goles}</td>
+                        <td style={{ textAlign: 'center', color: s.asistencias > 0 ? '#60a5fa' : 'rgba(255,255,255,0.3)', fontWeight: s.asistencias > 0 ? 700 : 400 }}>{s.asistencias}</td>
+                        <td style={{ textAlign: 'center' }}>
+                          {s.tarjeta_roja ? '🟥' : s.tarjeta_amarilla ? '🟨' : '—'}
+                        </td>
+                        <td>
+                          <span style={{ fontSize: 9, padding: '2px 5px', borderRadius: 3,
+                            background: s.fuente === 'api' ? 'rgba(96,165,250,0.1)' : 'rgba(255,255,255,0.04)',
+                            color: s.fuente === 'api' ? '#60a5fa' : 'rgba(255,255,255,0.3)',
+                            border: `1px solid ${s.fuente === 'api' ? 'rgba(96,165,250,0.2)' : 'rgba(255,255,255,0.06)'}` }}>
+                            {s.fuente === 'api' ? 'API' : 'Manual'}
+                          </span>
+                        </td>
+                        {canEdit && (
+                          <td>
+                            <div style={{ display: 'flex', gap: 4 }}>
+                              <button onClick={() => openEditStat(s)}
+                                style={{ fontSize: 10, padding: '2px 6px', borderRadius: 3, border: `1px solid rgba(201,168,76,0.3)`, background: 'transparent', color: GOLD, cursor: 'pointer', fontFamily: 'inherit' }}>
+                                Editar
+                              </button>
+                              <button onClick={() => handleDeleteStat(s.id)}
+                                style={{ fontSize: 10, padding: '2px 6px', borderRadius: 3, border: '1px solid rgba(248,113,113,0.3)', background: 'transparent', color: '#f87171', cursor: 'pointer', fontFamily: 'inherit' }}>
+                                ✕
+                              </button>
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
@@ -559,11 +626,15 @@ export default function PlayerStats({ player, canEdit = false }) {
                     {TIPOS_CLAUSULA.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
                   </select>
                 </div>
-                <div>
+                <div style={{ gridColumn: '1 / -1' }}>
                   <label style={LABEL}>COMPETENCIA QUE APLICA</label>
                   <select style={INPUT} value={clauseForm.competencia_aplica} onChange={e => setCF('competencia_aplica', e.target.value)}>
                     <option value="Todas">Todas</option>
-                    {COMPETENCIAS.map(c => <option key={c} value={c}>{c}</option>)}
+                    {competenciasFiltradas.map(c => (
+                      <option key={c.id} value={compLabel(c)}>{compLabel(c)}</option>
+                    ))}
+                    <option value="Internacional">Internacional</option>
+                    <option value="Amistoso">Amistoso</option>
                   </select>
                 </div>
                 {clauseForm.tipo === 'partidos' && (
@@ -653,7 +724,6 @@ export default function PlayerStats({ player, canEdit = false }) {
                       </div>
                     </div>
 
-                    {/* Barra de progreso */}
                     {c.estado !== 'pagada' && (
                       <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
@@ -665,11 +735,8 @@ export default function PlayerStats({ player, canEdit = false }) {
                           </span>
                         </div>
                         <div style={{ height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 3, overflow: 'hidden' }}>
-                          <div style={{
-                            height: '100%', borderRadius: 3, transition: 'width .5s',
-                            width: `${porcentaje}%`,
-                            background: porcentaje >= 100 ? '#4ade80' : porcentaje >= 80 ? GOLD : 'rgba(201,168,76,0.5)'
-                          }} />
+                          <div style={{ height: '100%', borderRadius: 3, transition: 'width .5s', width: `${porcentaje}%`,
+                            background: porcentaje >= 100 ? '#4ade80' : porcentaje >= 80 ? GOLD : 'rgba(201,168,76,0.5)' }} />
                         </div>
                         {porcentaje >= 80 && porcentaje < 100 && (
                           <div style={{ fontSize: 10, color: GOLD, marginTop: 4 }}>
