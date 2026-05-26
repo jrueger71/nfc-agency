@@ -15,13 +15,14 @@ export default function Navbar() {
   const is = (path) => location.pathname === path || location.pathname.startsWith(path + '/')
 
   const navItems = [
-    { label:'Jugadores', path:'/', show:true },
-    { label:'Dashboard', path:'/dashboard', show:!!session },
-    { label:'Finanzas', path:'/finanzas', show:!!session && (userRole==='admin'||userRole==='digitador') },
-    { label:'Plantel Admin', path:'/admin/jugadores', show:!!session && userRole==='admin' },
-    { label:'Noticias', path:'/admin/noticias', show:!!session && userRole==='admin' },
-    { label:'RRSS', path:'/admin/rrss', show:!!session && userRole==='admin' },
-    { label:'Usuarios', path:'/admin/usuarios', show:!!session && userRole==='admin' },
+    { label: 'Jugadores',    path: '/',                show: true },
+    { label: 'Dashboard',   path: '/dashboard',       show: !!session },
+    { label: 'Finanzas',    path: '/finanzas',        show: !!session && (userRole === 'admin' || userRole === 'digitador') },
+    { label: 'Plantel Admin', path: '/admin/jugadores', show: !!session && userRole === 'admin' },
+    { label: 'Scouting',    path: '/admin/scouting',  show: !!session && ['admin','agente','socio'].includes(userRole) },
+    { label: 'Noticias',    path: '/admin/noticias',  show: !!session && userRole === 'admin' },
+    { label: 'RRSS',        path: '/admin/rrss',      show: !!session && userRole === 'admin' },
+    { label: 'Usuarios',    path: '/admin/usuarios',  show: !!session && userRole === 'admin' },
   ]
 
   const go = (path) => { navigate(path); setMenuOpen(false) }
@@ -37,7 +38,7 @@ export default function Navbar() {
           />
         </div>
         <div style={{ display:'flex', gap:6, alignItems:'center' }} className="desktop-nav">
-          {navItems.filter(i=>i.show).map(item => (
+          {navItems.filter(i => i.show).map(item => (
             <button key={item.path} onClick={() => go(item.path)} style={{
               padding:'7px 14px', fontSize:12, fontWeight:600, letterSpacing:.5,
               borderRadius:4, cursor:'pointer', fontFamily:'inherit', transition:'all .15s',
@@ -58,7 +59,7 @@ export default function Navbar() {
       </nav>
       {menuOpen && (
         <div style={{ position:'fixed', top:56, left:0, right:0, zIndex:99, background:'#0a1530', borderBottom:'1px solid rgba(201,168,76,0.2)', padding:'8px 0', boxShadow:'0 8px 24px rgba(0,0,0,0.4)' }}>
-          {navItems.filter(i=>i.show).map(item => (
+          {navItems.filter(i => i.show).map(item => (
             <button key={item.path} onClick={() => go(item.path)} style={{ display:'block', width:'100%', textAlign:'left', padding:'14px 20px', fontSize:15, fontWeight:600, background:is(item.path)?'rgba(201,168,76,0.1)':'transparent', color:is(item.path)?'#C9A84C':'rgba(255,255,255,0.7)', border:'none', borderBottom:'1px solid rgba(255,255,255,0.04)', cursor:'pointer', fontFamily:'inherit' }}>{item.label}</button>
           ))}
           {session ? (
