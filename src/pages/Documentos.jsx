@@ -88,8 +88,10 @@ export default function Documentos() {
           nombre: player.name,
           rut: player.rut,
           domicilio: contactInfo?.address || 'a indicar',
-          comuna: 'Santiago',
+          comuna: contactInfo?.comuna || 'Santiago',
           fechaNac: player.birth_date,
+          nationality: player.nationality || 'Chile',
+          gender: player.gender || 'M',
         },
         esMenor: menor,
         tutores,
@@ -296,7 +298,8 @@ export default function Documentos() {
             <div style={{fontSize:12,color:'rgba(255,255,255,0.5)',lineHeight:1.8,marginBottom:20}}>
               <div><span style={{color:'rgba(255,255,255,0.35)'}}>Jugador:</span> {player.name}</div>
               <div><span style={{color:'rgba(255,255,255,0.35)'}}>RUT:</span> {player.rut}</div>
-              <div><span style={{color:'rgba(255,255,255,0.35)'}}>Domicilio:</span> {contactInfo?.address||'Sin registrar'}</div>
+              <div><span style={{color:'rgba(255,255,255,0.35)'}}>Domicilio:</span> {contactInfo?.address||'Sin registrar'}{contactInfo?.comuna ? ', ' + contactInfo.comuna : ''}</div>
+              <div><span style={{color:'rgba(255,255,255,0.35)'}}>Nacionalidad:</span> {player.nationality||'Chile'}</div>
               <div><span style={{color:'rgba(255,255,255,0.35)'}}>Fecha contrato:</span> {contratoForm.fechaContrato}</div>
               <div><span style={{color:'rgba(255,255,255,0.35)'}}>Duración:</span> {contratoForm.duracionAnios} año{contratoForm.duracionAnios>1?'s':''}</div>
               <div><span style={{color:'rgba(255,255,255,0.35)'}}>Firmantes:</span> {menor ? `Jugador + ${1+(contratoForm.dosTutores?1:0)} tutor(es) + Agencia` : 'Jugador + Agencia'}</div>
