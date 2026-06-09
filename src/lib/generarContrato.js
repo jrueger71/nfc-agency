@@ -12,6 +12,40 @@ const LINE_H = 5.2
 const X = 15
 const W = 180
 
+// Convierte nacionalidad a adjetivo en español (M/F)
+function nacionalidadAdjetivo(nationality, gender) {
+  const n = (nationality || 'Chile').toLowerCase().trim()
+  const esFemenino = gender === 'F'
+
+  const map = {
+    'chile':      esFemenino ? 'chilena' : 'chileno',
+    'argentina':  esFemenino ? 'argentina' : 'argentino',
+    'argentina':  esFemenino ? 'argentina' : 'argentino',
+    'uruguay':    esFemenino ? 'uruguaya' : 'uruguayo',
+    'brasil':     esFemenino ? 'brasileña' : 'brasileño',
+    'brazil':     esFemenino ? 'brasileña' : 'brasileño',
+    'colombia':   esFemenino ? 'colombiana' : 'colombiano',
+    'perú':       esFemenino ? 'peruana' : 'peruano',
+    'peru':       esFemenino ? 'peruana' : 'peruano',
+    'ecuador':    esFemenino ? 'ecuatoriana' : 'ecuatoriano',
+    'bolivia':    esFemenino ? 'boliviana' : 'boliviano',
+    'paraguay':   esFemenino ? 'paraguaya' : 'paraguayo',
+    'venezuela':  esFemenino ? 'venezolana' : 'venezolano',
+    'españa':     esFemenino ? 'española' : 'español',
+    'spain':      esFemenino ? 'española' : 'español',
+    'portugal':   esFemenino ? 'portuguesa' : 'portugués',
+    'méxico':     esFemenino ? 'mexicana' : 'mexicano',
+    'mexico':     esFemenino ? 'mexicana' : 'mexicano',
+    'costa rica': esFemenino ? 'costarricense' : 'costarricense',
+    'honduras':   esFemenino ? 'hondureña' : 'hondureño',
+    'guatemala':  esFemenino ? 'guatemalteca' : 'guatemalteco',
+    'panamá':     esFemenino ? 'panameña' : 'panameño',
+    'panama':     esFemenino ? 'panameña' : 'panameño',
+  }
+
+  return map[n] || (esFemenino ? nationality : nationality)
+}
+
 function addHeader(doc, pageNum, totalPages, logoDataUrl) {
   if (logoDataUrl) {
     try { doc.addImage(logoDataUrl, 'PNG', 15, 2, 18, 10) } catch(e) {}
@@ -36,11 +70,9 @@ function drawJustified(doc, text, x, y, maxWidth, lineH, checkPage, addPageFn) {
   lines.forEach((line, idx) => {
     if (checkPage(y)) { addPageFn(); y = 20 }
     const isLast = idx === lines.length - 1
-    // Don't justify last line or very short lines
     if (isLast || line.trim().length < 20) {
       doc.text(line, x, y)
     } else {
-      // Justify: calculate word spacing
       const words = line.split(' ').filter(w => w.length > 0)
       if (words.length <= 1) {
         doc.text(line, x, y)
@@ -82,7 +114,7 @@ export async function generarContratoPDF(datos) {
     fechaContrato,
     duracionAnios,
     ciudad,
-    tieneDerechosImagen = false, // nuevo flag
+    tieneDerechosImagen = false,
   } = datos
 
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
@@ -98,30 +130,33 @@ export async function generarContratoPDF(datos) {
     page++
   }
 
-  const ageCalc = (fechaNac) => {
-    const hoy = new Date(); const nac = new Date(fechaNac)
-    return Math.floor((hoy - nac) / (365.25 * 24 * 3600 * 1000))
-  }
-
   const nombreJugador = jugador.nombre.toUpperCase()
   const rutJugador = jugador.rut
   const domicilio = jugador.domicilio || 'a indicar'
   const comuna = jugador.comuna || 'Santiago'
+
+  // REGLA CRÍTICA: La fecha se usa EXACTAMENTE como viene — sin ajuste de timezone
+  // El campo fechaNac viene como 'YYYY-MM-DD' desde Supabase
+  // Se parsea forzando mediodía local para evitar cualquier desfase de zona horaria
   const fechaNacStr = jugador.fechaNac
-  ? new Date(jugador.fechaNac.includes('T') ? jugador.fechaNac : jugador.fechaNac + 'T12:00:00')
-      .toLocaleDateString('es-CL', { day:'2-digit', month:'long', year:'numeric' })
-  : '[FECHA NACIMIENTO]'
+    ? new Date(jugador.fechaNac.includes('T') ? jugador.fechaNac : jugador.fechaNac + 'T12:00:00')
+        .toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' })
+    : '[FECHA NACIMIENTO]'
+
+  // Nacionalidad dinámica según país y género
+  const nacionalidad = nacionalidadAdjetivo(jugador.nationality || 'Chile', jugador.gender || 'M')
+
+  // Ocupación según si es menor o no
+  const ocupacion = esMenor ? 'estudiante' : 'futbolista profesional'
 
   let compareciente = ''
-
   if (esMenor && tutores && tutores.length > 0) {
     const tutorStr = tutores.map(t => `don/doña ${t.nombre}, cédula de identidad número ${t.rut}`).join('; y ')
-    compareciente = `En ${ciudad || 'SANTIAGO'}, a ${fechaContrato}, entre don ${nombreJugador}, chileno/a, estudiante, cédula de identidad número ${rutJugador}, nacido/a el ${fechaNacStr}, y ${tutorStr}, en su calidad de padre/madre/representante legal, todos domiciliados para estos efectos en ${domicilio}, ${comuna}, en adelante también e indistintamente el "Jugador", representado por sus padres/tutores por ser menor de edad; y por la otra la SOCIEDAD NUEVA FUTBOL CHILE SpA, Rol Único Tributario Número 77.971.556-6, representada por don ALDO CAMILO MALDONADO REBOLLEDO, chileno, factor de comercio, cédula nacional de identidad número 10.370.416-2, Agente FIFA, Licencia número 202406-7288, domiciliado para estos efectos en Avenida Larraín #5682, Piso 13, La Reina, Región Metropolitana, en adelante también la "Agencia".`
+    compareciente = `En ${ciudad || 'SANTIAGO'}, a ${fechaContrato}, entre don ${nombreJugador}, ${nacionalidad}, ${ocupacion}, cédula de identidad número ${rutJugador}, nacido/a el ${fechaNacStr}, y ${tutorStr}, en su calidad de padre/madre/representante legal, todos domiciliados para estos efectos en ${domicilio}, ${comuna}, en adelante también e indistintamente el "Jugador", representado por sus padres/tutores por ser menor de edad; y por la otra la SOCIEDAD NUEVA FUTBOL CHILE SpA, Rol Único Tributario Número 77.971.556-6, representada por don ALDO CAMILO MALDONADO REBOLLEDO, chileno, factor de comercio, cédula nacional de identidad número 10.370.416-2, Agente FIFA, Licencia número 202406-7288, domiciliado para estos efectos en Avenida Larraín #5682, Piso 13, La Reina, Región Metropolitana, en adelante también la "Agencia".`
   } else {
-    compareciente = `En ${ciudad || 'SANTIAGO'}, a ${fechaContrato}, entre don/doña ${nombreJugador}, chileno/a, futbolista profesional, cédula de identidad número ${rutJugador}, nacido/a el ${fechaNacStr}, domiciliado/a para estos efectos en ${domicilio}, ${comuna}, en adelante también e indistintamente el "Jugador"; y por la otra la SOCIEDAD NUEVA FUTBOL CHILE SpA, Rol Único Tributario Número 77.971.556-6, representada por don ALDO CAMILO MALDONADO REBOLLEDO, chileno, factor de comercio, cédula nacional de identidad número 10.370.416-2, Agente FIFA, Licencia número 202406-7288, domiciliado para estos efectos en Avenida Larraín #5682, Piso 13, La Reina, Región Metropolitana, en adelante también la "Agencia".`
+    compareciente = `En ${ciudad || 'SANTIAGO'}, a ${fechaContrato}, entre don/doña ${nombreJugador}, ${nacionalidad}, ${ocupacion}, cédula de identidad número ${rutJugador}, nacido/a el ${fechaNacStr}, domiciliado/a para estos efectos en ${domicilio}, ${comuna}, en adelante también e indistintamente el "Jugador"; y por la otra la SOCIEDAD NUEVA FUTBOL CHILE SpA, Rol Único Tributario Número 77.971.556-6, representada por don ALDO CAMILO MALDONADO REBOLLEDO, chileno, factor de comercio, cédula nacional de identidad número 10.370.416-2, Agente FIFA, Licencia número 202406-7288, domiciliado para estos efectos en Avenida Larraín #5682, Piso 13, La Reina, Región Metropolitana, en adelante también la "Agencia".`
   }
 
-  // Art. 10 varía según si tiene derechos de imagen
   const art10 = tieneDerechosImagen
     ? {
         titulo: 'DÉCIMO: COMPENSACIÓN POR INVERSIONES Y TERMINACIÓN UNILATERAL.',
@@ -162,13 +197,11 @@ export async function generarContratoPDF(datos) {
   let y = 20
   doc.setFont('helvetica', 'normal')
 
-  // Title
   doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(...NAVY)
   doc.text('CONTRATO DE REPRESENTACIÓN', 105, y, { align: 'center' })
   doc.text('Y PRESTACIÓN DE OTROS SERVICIOS', 105, y + 8, { align: 'center' })
   y += 20
 
-  // Parties
   doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...NAVY)
   doc.text(nombreJugador, 105, y, { align: 'center' })
   y += 5
@@ -179,25 +212,18 @@ export async function generarContratoPDF(datos) {
   doc.text('NUEVA FÚTBOL CHILE SpA', 105, y, { align: 'center' })
   y += 10
 
-  // Intro — justified
   doc.setFontSize(FONT_SIZE); doc.setFont('helvetica', 'normal'); doc.setTextColor(...BLACK)
   y = drawJustified(doc, compareciente, X, y, W, LINE_H, checkPage, addPageFn)
   y += 4
 
-  // Articles
   for (const art of articulos) {
     if (checkPage(y)) { addPageFn(); y = 20 }
-
-    // Title
     doc.setFontSize(FONT_SIZE); doc.setFont('helvetica', 'bold'); doc.setTextColor(...NAVY)
     const titleLines = doc.splitTextToSize(art.titulo, W)
     titleLines.forEach(tl => {
       if (checkPage(y)) { addPageFn(); y = 20 }
-      doc.text(tl, X, y)
-      y += LINE_H
+      doc.text(tl, X, y); y += LINE_H
     })
-
-    // Body — justified, paragraph by paragraph
     doc.setFont('helvetica', 'normal'); doc.setTextColor(...BLACK)
     const paragraphs = art.texto.split('\n')
     for (const para of paragraphs) {
@@ -208,7 +234,6 @@ export async function generarContratoPDF(datos) {
     y += 4
   }
 
-  // Signatures page
   addHeader(doc, page, 99, logoData)
   doc.addPage(); page++
   y = 30
@@ -242,7 +267,6 @@ export async function generarContratoPDF(datos) {
     if (col >= 2) { col = 0; rowY += 60 }
   })
 
-  // Fix page numbers
   const totalPgs = doc.getNumberOfPages()
   for (let i = 1; i <= totalPgs; i++) {
     doc.setPage(i)

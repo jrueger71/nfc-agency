@@ -39,6 +39,12 @@ const SECTION_TITLE = (text) => (
   </div>
 )
 
+const NACIONALIDADES = [
+  'Chile', 'Argentina', 'Uruguay', 'Brasil', 'Colombia', 'Perú', 'Ecuador',
+  'Bolivia', 'Paraguay', 'Venezuela', 'España', 'Portugal', 'México',
+  'Costa Rica', 'Honduras', 'Guatemala', 'Panamá', 'Otra',
+]
+
 export default function PlayerForm({ player, onSave, onCancel }) {
   const isEdit = !!player?.id
 
@@ -46,6 +52,7 @@ export default function PlayerForm({ player, onSave, onCancel }) {
     name: player?.name || '',
     rut: player?.rut || '',
     birth_date: player?.birth_date || '',
+    nationality: player?.nationality || 'Chile',
     skill_foot: player?.skill_foot || '',
     shoe_size: player?.shoe_size || '',
     glove_size: player?.glove_size || '',
@@ -58,7 +65,6 @@ export default function PlayerForm({ player, onSave, onCancel }) {
     api_football_id: player?.api_football_id || '',
   })
 
-  // Datos de contacto — tabla contact_info
   const [contact, setContact] = useState({
     address: '',
     comuna: '',
@@ -66,15 +72,13 @@ export default function PlayerForm({ player, onSave, onCancel }) {
     email: '',
     instagram: '',
   })
-  const [contactId, setContactId] = useState(null) // id del registro en contact_info
-
+  const [contactId, setContactId] = useState(null)
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState('')
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
   const setC = (k, v) => setContact(c => ({ ...c, [k]: v }))
 
-  // Cargar datos de contacto si es edición
   useEffect(() => {
     if (!isEdit || !player?.id) return
     supabase.from('contact_info').select('*').eq('player_id', player.id).single()
@@ -106,14 +110,13 @@ export default function PlayerForm({ player, onSave, onCancel }) {
 
   const handleSave = async () => {
     if (!form.name) { setMsg('El nombre es requerido'); return }
-    setLoading(true)
-    setMsg('')
+    setLoading(true); setMsg('')
 
-    // 1. Guardar datos del jugador
     const payload = {
       name: form.name,
       rut: form.rut || null,
       birth_date: form.birth_date || null,
+      nationality: form.nationality || 'Chile',
       skill_foot: form.skill_foot || null,
       shoe_size: form.shoe_size ? parseFloat(form.shoe_size) : null,
       glove_size: form.glove_size ? parseFloat(form.glove_size) : null,
@@ -140,7 +143,7 @@ export default function PlayerForm({ player, onSave, onCancel }) {
 
     if (error) { setLoading(false); setMsg('Error: ' + error.message); return }
 
-    // 2. Guardar datos de contacto
+    // Guardar datos de contacto
     const hayContacto = contact.address || contact.comuna || contact.phone || contact.email || contact.instagram
     if (hayContacto && playerId) {
       const contactPayload = {
@@ -151,12 +154,9 @@ export default function PlayerForm({ player, onSave, onCancel }) {
         email: contact.email || null,
         instagram: contact.instagram || null,
       }
-
       if (contactId) {
-        // Actualizar registro existente
         await supabase.from('contact_info').update(contactPayload).eq('id', contactId)
       } else {
-        // Insertar nuevo registro
         await supabase.from('contact_info').insert(contactPayload)
       }
     }
@@ -192,6 +192,12 @@ export default function PlayerForm({ player, onSave, onCancel }) {
           <select style={INPUT} value={form.gender} onChange={e => set('gender', e.target.value)}>
             <option value="M">Masculino</option>
             <option value="F">Femenino</option>
+          </select>
+        </div>
+        <div>
+          <label style={LABEL}>NACIONALIDAD</label>
+          <select style={INPUT} value={form.nationality} onChange={e => set('nationality', e.target.value)}>
+            {NACIONALIDADES.map(n => <option key={n} value={n}>{n}</option>)}
           </select>
         </div>
         <div>
@@ -267,7 +273,7 @@ export default function PlayerForm({ player, onSave, onCancel }) {
         </div>
       </div>
 
-      {/* ── VISIBILIDAD ESTADÍSTICAS ─────────────────────────────────────── */}
+      {/* ── ESTADÍSTICAS PÚBLICAS ─────────────────────────────────────────── */}
       {SECTION_TITLE('ESTADÍSTICAS PÚBLICAS')}
       <div style={{ background: 'rgba(201,168,76,0.05)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 8, padding: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
@@ -278,7 +284,6 @@ export default function PlayerForm({ player, onSave, onCancel }) {
             Mostrar estadísticas en perfil público
           </label>
         </div>
-
         {form.stats_visible && (
           <>
             <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginBottom: 8, letterSpacing: 1 }}>
