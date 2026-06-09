@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 
 const INPUT = {
@@ -29,6 +29,16 @@ const CAMPOS_PUBLICOS = [
   { key: 'asistencias', label: 'Asistencias' },
 ]
 
+const SECTION_TITLE = (text) => (
+  <div style={{
+    fontSize: 10, color: 'rgba(255,255,255,0.25)', letterSpacing: 2,
+    fontWeight: 600, marginTop: 20, marginBottom: 12,
+    borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: 6,
+  }}>
+    {text}
+  </div>
+)
+
 export default function PlayerForm({ player, onSave, onCancel }) {
   const isEdit = !!player?.id
 
@@ -48,10 +58,39 @@ export default function PlayerForm({ player, onSave, onCancel }) {
     api_football_id: player?.api_football_id || '',
   })
 
+  // Datos de contacto — tabla contact_info
+  const [contact, setContact] = useState({
+    address: '',
+    comuna: '',
+    phone: '',
+    email: '',
+    instagram: '',
+  })
+  const [contactId, setContactId] = useState(null) // id del registro en contact_info
+
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState('')
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  const setC = (k, v) => setContact(c => ({ ...c, [k]: v }))
+
+  // Cargar datos de contacto si es edición
+  useEffect(() => {
+    if (!isEdit || !player?.id) return
+    supabase.from('contact_info').select('*').eq('player_id', player.id).single()
+      .then(({ data }) => {
+        if (data) {
+          setContactId(data.id)
+          setContact({
+            address: data.address || '',
+            comuna: data.comuna || '',
+            phone: data.phone || '',
+            email: data.email || '',
+            instagram: data.instagram || '',
+          })
+        }
+      })
+  }, [player?.id])
 
   const toggleCampo = (campo) => {
     setForm(f => {
@@ -70,6 +109,7 @@ export default function PlayerForm({ player, onSave, onCancel }) {
     setLoading(true)
     setMsg('')
 
+    // 1. Guardar datos del jugador
     const payload = {
       name: form.name,
       rut: form.rut || null,
@@ -86,15 +126,42 @@ export default function PlayerForm({ player, onSave, onCancel }) {
       api_football_id: form.api_football_id ? parseInt(form.api_football_id) : null,
     }
 
+    let playerId = player?.id
     let error
+
     if (isEdit) {
       ;({ error } = await supabase.from('players').update(payload).eq('id', player.id))
     } else {
-      ;({ error } = await supabase.from('players').insert(payload))
+      const { data: newPlayer, error: insertError } = await supabase
+        .from('players').insert(payload).select().single()
+      error = insertError
+      if (newPlayer) playerId = newPlayer.id
+    }
+
+    if (error) { setLoading(false); setMsg('Error: ' + error.message); return }
+
+    // 2. Guardar datos de contacto
+    const hayContacto = contact.address || contact.comuna || contact.phone || contact.email || contact.instagram
+    if (hayContacto && playerId) {
+      const contactPayload = {
+        player_id: playerId,
+        address: contact.address || null,
+        comuna: contact.comuna || null,
+        phone: contact.phone || null,
+        email: contact.email || null,
+        instagram: contact.instagram || null,
+      }
+
+      if (contactId) {
+        // Actualizar registro existente
+        await supabase.from('contact_info').update(contactPayload).eq('id', contactId)
+      } else {
+        // Insertar nuevo registro
+        await supabase.from('contact_info').insert(contactPayload)
+      }
     }
 
     setLoading(false)
-    if (error) { setMsg('Error: ' + error.message); return }
     setMsg(isEdit ? '✓ Jugador actualizado' : '✓ Jugador agregado')
     setTimeout(() => onSave?.(), 1200)
   }
@@ -105,6 +172,8 @@ export default function PlayerForm({ player, onSave, onCancel }) {
         {isEdit ? 'EDITAR JUGADOR' : 'AGREGAR JUGADOR'}
       </div>
 
+      {/* ── DATOS PERSONALES ─────────────────────────────────────────────── */}
+      {SECTION_TITLE('DATOS PERSONALES')}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
         <div style={{ gridColumn: '1/-1' }}>
           <label style={LABEL}>NOMBRE COMPLETO *</label>
@@ -168,8 +237,39 @@ export default function PlayerForm({ player, onSave, onCancel }) {
         </div>
       </div>
 
-      {/* Visibilidad pública de estadísticas */}
-      <div style={{ marginTop: 20, background: 'rgba(201,168,76,0.05)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 8, padding: 14 }}>
+      {/* ── DATOS DE CONTACTO ────────────────────────────────────────────── */}
+      {SECTION_TITLE('DATOS DE CONTACTO')}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+        <div style={{ gridColumn: '1/-1' }}>
+          <label style={LABEL}>DIRECCIÓN</label>
+          <input style={INPUT} value={contact.address} onChange={e => setC('address', e.target.value)}
+            placeholder="Calle, número, depto..." />
+        </div>
+        <div>
+          <label style={LABEL}>COMUNA</label>
+          <input style={INPUT} value={contact.comuna} onChange={e => setC('comuna', e.target.value)}
+            placeholder="Santiago, Maipú, Concepción..." />
+        </div>
+        <div>
+          <label style={LABEL}>TELÉFONO</label>
+          <input style={INPUT} value={contact.phone} onChange={e => setC('phone', e.target.value)}
+            placeholder="+56 9 xxxx xxxx" />
+        </div>
+        <div>
+          <label style={LABEL}>EMAIL</label>
+          <input style={INPUT} type="email" value={contact.email} onChange={e => setC('email', e.target.value)}
+            placeholder="jugador@email.com" />
+        </div>
+        <div>
+          <label style={LABEL}>INSTAGRAM</label>
+          <input style={INPUT} value={contact.instagram} onChange={e => setC('instagram', e.target.value)}
+            placeholder="@usuario" />
+        </div>
+      </div>
+
+      {/* ── VISIBILIDAD ESTADÍSTICAS ─────────────────────────────────────── */}
+      {SECTION_TITLE('ESTADÍSTICAS PÚBLICAS')}
+      <div style={{ background: 'rgba(201,168,76,0.05)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 8, padding: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
           <input type="checkbox" id="stats_visible" checked={form.stats_visible}
             onChange={e => set('stats_visible', e.target.checked)}
