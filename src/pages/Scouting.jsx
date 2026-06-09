@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../App'
 
 function fmtDate(d) {
   if (!d) return '—'
@@ -34,7 +35,8 @@ const TAB_STYLE = (active) => ({
   border: active ? `1px solid ${GOLD}` : '1px solid rgba(201,168,76,0.2)',
 })
 
-const ESTADOS = ['Observación', 'Contactado', 'Negociando', 'Descartado', 'Incorporado']
+const ESTADOS = ['Observación', 'Contactado', 'Negociando', 'Libre', 'Incorporado', 'Archivado']
+const ESTADOS_ACTIVOS = ['Observación', 'Contactado', 'Negociando', 'Libre', 'Incorporado']
 const PRIORIDADES = ['Alta', 'Normal', 'Baja']
 const POSICIONES = ['Portero', 'Defensa', 'Mediocampista', 'Delantero']
 const TIPOS_CONTACTO = ['Llamada', 'Reunión', 'Email', 'WhatsApp', 'Partido observado', 'Otro']
@@ -43,8 +45,9 @@ const ESTADO_COLORS = {
   'Observación': { bg: 'rgba(201,168,76,0.15)', color: '#C9A84C' },
   'Contactado':  { bg: 'rgba(96,165,250,0.15)', color: '#60a5fa' },
   'Negociando':  { bg: 'rgba(251,146,60,0.15)', color: '#fb923c' },
-  'Descartado':  { bg: 'rgba(248,113,113,0.15)', color: '#f87171' },
+  'Libre':       { bg: 'rgba(167,139,250,0.15)', color: '#a78bfa' },
   'Incorporado': { bg: 'rgba(74,222,128,0.15)', color: '#4ade80' },
+  'Archivado':   { bg: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.25)' },
 }
 
 const PRIORIDAD_COLORS = {
@@ -59,7 +62,7 @@ const EMPTY_FORM = {
   last_extension: '', fichado_fecha: '', agente_actual: '',
   transfermarkt_profile: '', transfermarkt_valuation: '',
   estado: 'Observación', prioridad: 'Normal',
-  telefono: '', email: '', notas: '',
+  telefono: '', email: '', notas: '', edad_referencial: '',
 }
 
 const EMPTY_CONTACT = {
@@ -113,11 +116,10 @@ function ModalContactos({ jugador, onClose }) {
         display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div style={{ background: '#0f1a3a', border: '1px solid rgba(201,168,76,0.3)', borderRadius: 12,
         padding: 24, width: '100%', maxWidth: 580, maxHeight: '85vh', overflowY: 'auto' }}>
-
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div>
             <div style={{ fontSize: 13, color: GOLD, fontWeight: 600, letterSpacing: 1 }}>HISTORIAL DE CONTACTOS</div>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>{jugador.name}</div>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>{jugador.name} · {jugador.club_name || '—'}</div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="btn-gold" onClick={() => setShowForm(s => !s)}>+ NUEVO</button>
@@ -200,7 +202,7 @@ function ModalContactos({ jugador, onClose }) {
 }
 
 // ── Formulario jugador ────────────────────────────────────────────────────────
-function ScoutingForm({ jugador, onSave, onCancel }) {
+function ScoutingForm({ jugador, userEmail, onSave, onCancel }) {
   const isEdit = !!jugador?.id
   const [form, setForm] = useState({ ...EMPTY_FORM, ...jugador })
   const [saving, setSaving] = useState(false)
@@ -213,6 +215,7 @@ function ScoutingForm({ jugador, onSave, onCancel }) {
     const payload = {
       name: form.name,
       birth_date: form.birth_date || null,
+      edad_referencial: form.edad_referencial ? parseInt(form.edad_referencial) : null,
       nationality: form.nationality || 'Chile',
       gender: form.gender || 'M',
       position: form.position || null,
@@ -229,12 +232,18 @@ function ScoutingForm({ jugador, onSave, onCancel }) {
       telefono: form.telefono || null,
       email: form.email || null,
       notas: form.notas || null,
+      updated_by_email: userEmail || null,
+      updated_at: new Date().toISOString(),
     }
+
     let error
     if (isEdit) {
       ;({ error } = await supabase.from('scouting').update(payload).eq('id', jugador.id))
     } else {
-      ;({ error } = await supabase.from('scouting').insert(payload))
+      ;({ error } = await supabase.from('scouting').insert({
+        ...payload,
+        created_by_email: userEmail || null,
+      }))
     }
     setSaving(false)
     if (error) { setMsg('Error: ' + error.message); return }
@@ -248,8 +257,7 @@ function ScoutingForm({ jugador, onSave, onCancel }) {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-
-        {/* Estado y prioridad */}
+        {/* Estado */}
         <div>
           <label style={LABEL}>ESTADO</label>
           <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
@@ -266,6 +274,7 @@ function ScoutingForm({ jugador, onSave, onCancel }) {
           </div>
         </div>
 
+        {/* Prioridad */}
         <div>
           <label style={LABEL}>PRIORIDAD</label>
           <div style={{ display: 'flex', gap: 5 }}>
@@ -282,17 +291,23 @@ function ScoutingForm({ jugador, onSave, onCancel }) {
           </div>
         </div>
 
-        {/* Datos básicos */}
+        {/* Nombre */}
         <div style={{ gridColumn: '1/-1' }}>
           <label style={LABEL}>NOMBRE COMPLETO *</label>
-          <input style={INPUT} value={form.name} onChange={e => set('name', e.target.value)}
-            placeholder="Nombre Apellido" />
+          <input style={INPUT} value={form.name} onChange={e => set('name', e.target.value)} placeholder="Nombre Apellido" />
         </div>
 
         <div>
           <label style={LABEL}>FECHA NACIMIENTO</label>
           <input style={INPUT} type="date" value={form.birth_date || ''}
             onChange={e => set('birth_date', e.target.value)} />
+        </div>
+
+        <div>
+          <label style={LABEL}>EDAD REFERENCIAL</label>
+          <input style={INPUT} type="number" value={form.edad_referencial || ''}
+            onChange={e => set('edad_referencial', e.target.value)}
+            placeholder="Ej: 24 (si no hay fecha de nac.)" />
         </div>
 
         <div>
@@ -312,8 +327,7 @@ function ScoutingForm({ jugador, onSave, onCancel }) {
 
         <div>
           <label style={LABEL}>NACIONALIDAD</label>
-          <input style={INPUT} value={form.nationality || ''} onChange={e => set('nationality', e.target.value)}
-            placeholder="Chile" />
+          <input style={INPUT} value={form.nationality || ''} onChange={e => set('nationality', e.target.value)} placeholder="Chile" />
         </div>
 
         <div>
@@ -326,79 +340,59 @@ function ScoutingForm({ jugador, onSave, onCancel }) {
 
         {/* Club */}
         <div style={{ gridColumn: '1/-1' }}>
-          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', letterSpacing: 1.5, marginBottom: 8, borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: 6 }}>
-            INFORMACIÓN DE CLUB
-          </div>
+          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', letterSpacing: 1.5, marginBottom: 8,
+            borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: 6 }}>INFORMACIÓN DE CLUB</div>
         </div>
 
         <div>
           <label style={LABEL}>CLUB ACTUAL</label>
-          <input style={INPUT} value={form.club_name || ''} onChange={e => set('club_name', e.target.value)}
-            placeholder="Nombre del club" />
+          <input style={INPUT} value={form.club_name || ''} onChange={e => set('club_name', e.target.value)} placeholder="Nombre del club" />
         </div>
-
         <div>
           <label style={LABEL}>FECHA FICHADO AL CLUB</label>
-          <input style={INPUT} type="date" value={form.fichado_fecha || ''}
-            onChange={e => set('fichado_fecha', e.target.value)} />
+          <input style={INPUT} type="date" value={form.fichado_fecha || ''} onChange={e => set('fichado_fecha', e.target.value)} />
         </div>
-
         <div>
           <label style={LABEL}>CONTRATO HASTA</label>
-          <input style={INPUT} type="date" value={form.contract_until || ''}
-            onChange={e => set('contract_until', e.target.value)} />
+          <input style={INPUT} type="date" value={form.contract_until || ''} onChange={e => set('contract_until', e.target.value)} />
         </div>
-
         <div>
           <label style={LABEL}>ÚLTIMA AMPLIACIÓN</label>
-          <input style={INPUT} type="date" value={form.last_extension || ''}
-            onChange={e => set('last_extension', e.target.value)} />
+          <input style={INPUT} type="date" value={form.last_extension || ''} onChange={e => set('last_extension', e.target.value)} />
         </div>
-
         <div style={{ gridColumn: '1/-1' }}>
           <label style={LABEL}>OPCIÓN DE CONTRATO</label>
           <input style={INPUT} value={form.contract_option || ''} onChange={e => set('contract_option', e.target.value)}
-            placeholder="Ej: +1 año opcional, cláusula de salida 500K€..." />
+            placeholder="Ej: +1 año opcional, cláusula de salida..." />
         </div>
-
         <div style={{ gridColumn: '1/-1' }}>
           <label style={LABEL}>AGENTE ACTUAL</label>
           <input style={INPUT} value={form.agente_actual || ''} onChange={e => set('agente_actual', e.target.value)}
             placeholder="Nombre del agente o agencia actual" />
         </div>
 
-        {/* Transfermarkt */}
         <div>
           <label style={LABEL}>VALOR TRANSFERMARKT</label>
-          <input style={INPUT} value={form.transfermarkt_valuation || ''} onChange={e => set('transfermarkt_valuation', e.target.value)}
-            placeholder="500K €" />
+          <input style={INPUT} value={form.transfermarkt_valuation || ''} onChange={e => set('transfermarkt_valuation', e.target.value)} placeholder="500K €" />
         </div>
-
         <div>
           <label style={LABEL}>PERFIL TRANSFERMARKT</label>
-          <input style={INPUT} value={form.transfermarkt_profile || ''} onChange={e => set('transfermarkt_profile', e.target.value)}
-            placeholder="https://www.transfermarkt.com/..." />
+          <input style={INPUT} value={form.transfermarkt_profile || ''} onChange={e => set('transfermarkt_profile', e.target.value)} placeholder="https://www.transfermarkt.com/..." />
         </div>
 
         {/* Contacto */}
         <div style={{ gridColumn: '1/-1' }}>
-          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', letterSpacing: 1.5, marginBottom: 8, borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: 6 }}>
-            DATOS DE CONTACTO
-          </div>
+          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', letterSpacing: 1.5, marginBottom: 8,
+            borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: 6 }}>DATOS DE CONTACTO</div>
         </div>
-
         <div>
           <label style={LABEL}>TELÉFONO</label>
-          <input style={INPUT} value={form.telefono || ''} onChange={e => set('telefono', e.target.value)}
-            placeholder="+56 9 xxxx xxxx" />
+          <input style={INPUT} value={form.telefono || ''} onChange={e => set('telefono', e.target.value)} placeholder="+56 9 xxxx xxxx" />
         </div>
-
         <div>
           <label style={LABEL}>EMAIL</label>
-          <input style={INPUT} type="email" value={form.email || ''} onChange={e => set('email', e.target.value)}
-            placeholder="jugador@email.com" />
+          <input style={INPUT} type="email" value={form.email || ''} onChange={e => set('email', e.target.value)} placeholder="jugador@email.com" />
         </div>
-
         <div style={{ gridColumn: '1/-1' }}>
           <label style={LABEL}>NOTAS</label>
           <textarea style={{ ...INPUT, resize: 'vertical', minHeight: 70 }}
@@ -414,6 +408,12 @@ function ScoutingForm({ jugador, onSave, onCancel }) {
         <button className="btn-ghost" onClick={onCancel}>CANCELAR</button>
         {msg && <span style={{ fontSize: 12, color: '#f87171', marginLeft: 8 }}>{msg}</span>}
       </div>
+
+      {isEdit && jugador.updated_by_email && (
+        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', marginTop: 12 }}>
+          Última modificación: {jugador.updated_by_email} · {fmtDate(jugador.updated_at)}
+        </div>
+      )}
     </div>
   )
 }
@@ -421,13 +421,17 @@ function ScoutingForm({ jugador, onSave, onCancel }) {
 // ── Scouting principal ────────────────────────────────────────────────────────
 export default function Scouting() {
   const navigate = useNavigate()
+  const { session } = useAuth()
+  const userEmail = session?.user?.email || null
+
   const [jugadores, setJugadores] = useState([])
   const [loading, setLoading] = useState(true)
-  const [modal, setModal] = useState(null) // null | { type: 'form'|'contactos', data }
+  const [modal, setModal] = useState(null)
   const [filterEstado, setFilterEstado] = useState('Todos')
   const [filterPos, setFilterPos] = useState('Todos')
   const [filterPrioridad, setFilterPrioridad] = useState('Todos')
   const [filterGenero, setFilterGenero] = useState('Todos')
+  const [showArchivados, setShowArchivados] = useState(false)
   const [search, setSearch] = useState('')
   const [contactCounts, setContactCounts] = useState({})
 
@@ -435,10 +439,7 @@ export default function Scouting() {
     setLoading(true)
     const { data } = await supabase.from('scouting').select('*').order('created_at', { ascending: false })
     setJugadores(data || [])
-
-    // Contar contactos por jugador
-    const { data: counts } = await supabase.from('scouting_contacts')
-      .select('scouting_id')
+    const { data: counts } = await supabase.from('scouting_contacts').select('scouting_id')
     const map = {}
     if (counts) counts.forEach(c => { map[c.scouting_id] = (map[c.scouting_id] || 0) + 1 })
     setContactCounts(map)
@@ -447,21 +448,23 @@ export default function Scouting() {
 
   useEffect(() => { load() }, [])
 
-  const handleIncorporar = async (j) => {
-    if (!window.confirm(`¿Incorporar a ${j.name} como representado? Esto cambiará su estado a "Incorporado".`)) return
-    await supabase.from('scouting').update({ estado: 'Incorporado' }).eq('id', j.id)
-    load()
-  }
-
-  const handleDelete = async (id) => {
-    if (!window.confirm('¿Eliminar este jugador del radar?')) return
-    await supabase.from('scouting').delete().eq('id', id)
+  const handleCambiarEstado = async (j, nuevoEstado) => {
+    const confirmMsg = nuevoEstado === 'Incorporado'
+      ? `¿Incorporar a ${j.name} como representado?`
+      : `¿Archivar a ${j.name}? El registro se mantendrá pero no aparecerá en la lista activa.`
+    if (!window.confirm(confirmMsg)) return
+    await supabase.from('scouting').update({
+      estado: nuevoEstado,
+      updated_by_email: userEmail,
+      updated_at: new Date().toISOString(),
+    }).eq('id', j.id)
     load()
   }
 
   const closeModal = () => { setModal(null); load() }
 
   const filtered = jugadores.filter(j => {
+    if (!showArchivados && j.estado === 'Archivado') return false
     const matchSearch = !search || j.name?.toLowerCase().includes(search.toLowerCase()) || j.club_name?.toLowerCase().includes(search.toLowerCase())
     const matchEstado = filterEstado === 'Todos' || j.estado === filterEstado
     const matchPos = filterPos === 'Todos' || j.position === filterPos
@@ -470,36 +473,31 @@ export default function Scouting() {
     return matchSearch && matchEstado && matchPos && matchPrio && matchGenero
   })
 
-  // Alertas: contrato vence en menos de 6 meses
   const alertas = jugadores.filter(j => {
-    if (!j.contract_until || j.estado === 'Descartado' || j.estado === 'Incorporado') return false
+    if (!j.contract_until || ['Archivado', 'Incorporado'].includes(j.estado)) return false
     const dias = Math.floor((new Date(j.contract_until + 'T12:00:00') - Date.now()) / (24 * 3600 * 1000))
     return dias >= 0 && dias <= 180
   })
 
+  const totalArchivados = jugadores.filter(j => j.estado === 'Archivado').length
+
   if (loading) return (
-    <div style={{ textAlign: 'center', padding: 60, fontFamily: 'Bebas Neue', color: GOLD, letterSpacing: 3 }}>
-      CARGANDO...
-    </div>
+    <div style={{ textAlign: 'center', padding: 60, fontFamily: 'Bebas Neue', color: GOLD, letterSpacing: 3 }}>CARGANDO...</div>
   )
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', padding: '20px 24px' }}>
 
-      {/* Modal */}
-      {modal && (
+      {/* Modals */}
+      {modal?.type === 'form' && (
         <div onClick={e => e.target === e.currentTarget && closeModal()}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 200,
             display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <div style={{ maxHeight: '90vh', overflowY: 'auto', width: '100%', maxWidth: 720 }}>
-            {modal.type === 'form' && (
-              <ScoutingForm jugador={modal.data} onSave={closeModal} onCancel={closeModal} />
-            )}
+            <ScoutingForm jugador={modal.data} userEmail={userEmail} onSave={closeModal} onCancel={closeModal} />
           </div>
         </div>
       )}
-
-      {/* Modal contactos — fuera del modal genérico para mejor z-index */}
       {modal?.type === 'contactos' && (
         <ModalContactos jugador={modal.data} onClose={closeModal} />
       )}
@@ -514,13 +512,19 @@ export default function Scouting() {
           <div className="bebas" style={{ fontSize: 22, letterSpacing: 3, color: '#fff' }}>
             RADAR DE SCOUTING
             <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', fontFamily: 'inherit', marginLeft: 12, fontWeight: 400, letterSpacing: 1 }}>
-              {jugadores.filter(j => j.estado !== 'Descartado' && j.estado !== 'Incorporado').length} activos
+              {jugadores.filter(j => !['Archivado'].includes(j.estado)).length} activos · {jugadores.length} total
             </span>
           </div>
         </div>
-        <button className="btn-gold" onClick={() => setModal({ type: 'form', data: null })}>
-          + AGREGAR JUGADOR
-        </button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {userEmail && (
+            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', padding: '4px 8px',
+              border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4 }}>
+              👤 {userEmail}
+            </span>
+          )}
+          <button className="btn-gold" onClick={() => setModal({ type: 'form', data: null })}>+ AGREGAR JUGADOR</button>
+        </div>
       </div>
 
       {/* Alertas contratos por vencer */}
@@ -546,8 +550,8 @@ export default function Scouting() {
       )}
 
       {/* Resumen por estado */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, marginBottom: 16 }}>
-        {ESTADOS.map(e => {
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 8, marginBottom: 16 }}>
+        {ESTADOS_ACTIVOS.map(e => {
           const n = jugadores.filter(j => j.estado === e).length
           const { bg, color } = ESTADO_COLORS[e]
           return (
@@ -560,6 +564,14 @@ export default function Scouting() {
             </div>
           )
         })}
+        {/* Archivados toggle */}
+        <div onClick={() => { setShowArchivados(s => !s); setFilterEstado('Todos') }}
+          style={{ background: showArchivados ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.02)',
+            border: `1px solid ${showArchivados ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.04)'}`,
+            borderRadius: 8, padding: '10px 12px', textAlign: 'center', cursor: 'pointer', transition: 'all .15s' }}>
+          <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: 'rgba(255,255,255,0.25)', lineHeight: 1 }}>{totalArchivados}</div>
+          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)', letterSpacing: 1, marginTop: 3 }}>ARCHIVADOS {showArchivados ? '▲' : '▼'}</div>
+        </div>
       </div>
 
       {/* Filtros */}
@@ -601,12 +613,12 @@ export default function Scouting() {
                 <th>Club</th>
                 <th>Fichado</th>
                 <th>Contrato hasta</th>
-                <th>Últ. ampliación</th>
                 <th>Agente</th>
                 <th>TM</th>
                 <th>Estado</th>
                 <th>Prior.</th>
-                <th>Contactos</th>
+                <th>💬</th>
+                <th>Ingresó</th>
                 <th>Acc.</th>
               </tr>
             </thead>
@@ -617,8 +629,11 @@ export default function Scouting() {
                   ? Math.floor((new Date(j.contract_until + 'T12:00:00') - Date.now()) / (24 * 3600 * 1000))
                   : null
                 const contratoAlerta = diasContrato !== null && diasContrato >= 0 && diasContrato <= 180
+                const edadMostrar = j.birth_date ? calcEdad(j.birth_date) : (j.edad_referencial ? `~${j.edad_referencial}` : '—')
+                const esArchivado = j.estado === 'Archivado'
+
                 return (
-                  <tr key={j.id}>
+                  <tr key={j.id} style={{ opacity: esArchivado ? 0.5 : 1 }}>
                     <td>
                       <div style={{ fontWeight: 600, color: '#fff', fontSize: 12 }}>{j.name}</div>
                       {j.notas && (
@@ -627,17 +642,11 @@ export default function Scouting() {
                           title={j.notas}>{j.notas}</div>
                       )}
                     </td>
-                    <td style={{ textAlign: 'center', color: GOLD, fontWeight: 600 }}>
-                      {calcEdad(j.birth_date)}
-                    </td>
-                    <td style={{ textAlign: 'center', fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>
-                      {j.nationality || '—'}
-                    </td>
+                    <td style={{ textAlign: 'center', color: GOLD, fontWeight: 600 }}>{edadMostrar}</td>
+                    <td style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>{j.nationality || '—'}</td>
                     <td style={{ fontSize: 11 }}>{j.position || '—'}</td>
                     <td style={{ fontSize: 11, color: '#fff', fontWeight: 500 }}>{j.club_name || '—'}</td>
-                    <td style={{ fontSize: 11, whiteSpace: 'nowrap', color: 'rgba(255,255,255,0.5)' }}>
-                      {fmtDate(j.fichado_fecha)}
-                    </td>
+                    <td style={{ fontSize: 11, whiteSpace: 'nowrap', color: 'rgba(255,255,255,0.5)' }}>{fmtDate(j.fichado_fecha)}</td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       {j.contract_until ? (
                         <span style={{ fontSize: 11, color: contratoAlerta ? '#fb923c' : 'rgba(255,255,255,0.5)',
@@ -646,9 +655,6 @@ export default function Scouting() {
                           {contratoAlerta && <span style={{ fontSize: 9, marginLeft: 4 }}>⚡{diasContrato}d</span>}
                         </span>
                       ) : '—'}
-                    </td>
-                    <td style={{ fontSize: 11, whiteSpace: 'nowrap', color: 'rgba(255,255,255,0.5)' }}>
-                      {fmtDate(j.last_extension)}
                     </td>
                     <td style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>{j.agente_actual || '—'}</td>
                     <td>
@@ -682,6 +688,11 @@ export default function Scouting() {
                         💬 {contactCounts[j.id] || 0}
                       </button>
                     </td>
+                    <td style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', whiteSpace: 'nowrap' }}>
+                      {j.created_by_email
+                        ? j.created_by_email.split('@')[0]
+                        : '—'}
+                    </td>
                     <td>
                       <div style={{ display: 'flex', gap: 4 }}>
                         <button onClick={() => setModal({ type: 'form', data: j })}
@@ -690,21 +701,31 @@ export default function Scouting() {
                             color: GOLD, cursor: 'pointer', fontFamily: 'inherit' }}>
                           Editar
                         </button>
-                        {j.estado !== 'Incorporado' && (
-                          <button onClick={() => handleIncorporar(j)}
+                        {!esArchivado && j.estado !== 'Incorporado' && (
+                          <button onClick={() => handleCambiarEstado(j, 'Incorporado')}
                             style={{ fontSize: 10, padding: '3px 6px', borderRadius: 3,
                               border: '1px solid rgba(74,222,128,0.3)', background: 'transparent',
                               color: '#4ade80', cursor: 'pointer', fontFamily: 'inherit' }}
-                            title="Incorporar como representado">
-                            ✓
+                            title="Incorporar como representado">✓</button>
+                        )}
+                        {!esArchivado && (
+                          <button onClick={() => handleCambiarEstado(j, 'Archivado')}
+                            style={{ fontSize: 10, padding: '3px 6px', borderRadius: 3,
+                              border: '1px solid rgba(255,255,255,0.1)', background: 'transparent',
+                              color: 'rgba(255,255,255,0.3)', cursor: 'pointer', fontFamily: 'inherit' }}
+                            title="Archivar — el registro se mantiene">
+                            📁
                           </button>
                         )}
-                        <button onClick={() => handleDelete(j.id)}
-                          style={{ fontSize: 10, padding: '3px 6px', borderRadius: 3,
-                            border: '1px solid rgba(248,113,113,0.3)', background: 'transparent',
-                            color: '#f87171', cursor: 'pointer', fontFamily: 'inherit' }}>
-                          ✕
-                        </button>
+                        {esArchivado && (
+                          <button onClick={() => handleCambiarEstado(j, 'Observación')}
+                            style={{ fontSize: 10, padding: '3px 6px', borderRadius: 3,
+                              border: '1px solid rgba(201,168,76,0.2)', background: 'transparent',
+                              color: GOLD, cursor: 'pointer', fontFamily: 'inherit' }}
+                            title="Reactivar al radar">
+                            ↩
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
