@@ -1,0 +1,27 @@
+name: Supabase Keep Alive
+
+on:
+  schedule:
+    # Cada 4 días a las 09:00 UTC (06:00 Chile aprox)
+    - cron: '0 9 */4 * *'
+  workflow_dispatch: {}   # permite ejecutarlo manualmente desde GitHub
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase (consulta liviana)
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/players?select=id&limit=1" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}")
+
+          echo "HTTP status: $response"
+
+          if [ "$response" -ne 200 ]; then
+            echo "⚠️ Supabase no respondió 200 — revisar proyecto"
+            exit 1
+          fi
+
+          echo "✅ Supabase activo"
