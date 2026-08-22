@@ -127,21 +127,13 @@ export default function Landing() {
 
   useEffect(() => {
     setTimeout(() => setHeroVisible(true), 100)
+    // players_public_landing: vista publica curada (sin RUT, sin datos de contrato/contacto)
+    // ver CLAUDE.md — "Seguridad" (22-ago-2026, tarde)
     Promise.all([
-      supabase.from('players_full_info').select('id,name,position,club_name,club_contract_active,loan_club_name,loan_tipo').order('name'),
-      supabase.from('players').select('id,foto_url,mostrar_en_landing'),
+      supabase.from('players_public_landing').select('id,name,foto_url,position,club_name,club_contract_active,loan_club_name,loan_tipo,loan_club_origen').order('name'),
       supabase.from('noticias').select('*,players(name,foto_url)').eq('visible', true).order('fecha', { ascending: false }).limit(6),
-    ]).then(([{ data: pfi }, { data: pp }, { data: nn }]) => {
-      const fotoMap = {}
-      const landingMap = {}
-      if (pp) pp.forEach(p => {
-        fotoMap[p.id] = p.foto_url
-        landingMap[p.id] = p.mostrar_en_landing
-      })
-      const merged = (pfi || [])
-        .map(p => ({ ...p, foto_url: fotoMap[p.id] || null }))
-        .filter(p => landingMap[p.id] === true)
-      setPlayers(merged)
+    ]).then(([{ data: pfi }, { data: nn }]) => {
+      setPlayers(pfi || [])
       setNoticias(nn || [])
       setLoading(false)
     })

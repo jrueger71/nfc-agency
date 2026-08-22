@@ -70,8 +70,12 @@ export default function PlayerDetail() {
   const canEditStats = session && ['admin', 'agente', 'socio'].includes(userRole)
 
   const load = async () => {
+    // Sin sesion: usar la vista publica curada (sin RUT, sin datos de contrato/contacto).
+    // Con sesion: players_full_info trae todo lo que la app interna necesita.
+    // Ver CLAUDE.md — "Seguridad" (22-ago-2026, tarde).
+    const table = session ? 'players_full_info' : 'players_public_landing'
     const [{ data: p }, { data: m }] = await Promise.all([
-      supabase.from('players_full_info').select('*').eq('id', id).single(),
+      supabase.from(table).select('*').eq('id', id).single(),
       supabase.from('player_media').select('*').eq('player_id', id).order('display_order'),
     ])
     setPlayer(p)
@@ -79,7 +83,7 @@ export default function PlayerDetail() {
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [id])
+  useEffect(() => { load() }, [id, session])
 
   const handleCropSave = async (publicUrl) => {
     const { error } = await supabase.from('players').update({ foto_url: publicUrl }).eq('id', id)
