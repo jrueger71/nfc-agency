@@ -189,8 +189,12 @@ export async function generarContratoPDF(datos) {
       ? `en su calidad de Agente de Fútbol vinculado a ${rc.agenciaLicencia}`
       : 'en su calidad de tercero vinculado a la gestión del Jugador'
     const documentoStr = rc.documento ? `, cédula de identidad o documento número ${rc.documento},` : ','
-    const pctStr = rc.porcentaje ? ` correspondiéndole a este último un ${rc.porcentaje}% (por ciento) de dicha comisión` : ''
-    quintoTexto += `\n\nSin perjuicio de lo anterior, las partes dejan constancia que la Agencia podrá compartir la comisión pactada en el presente artículo con don/doña ${rc.nombre}${documentoStr} ${calidad}${pctStr}. Este reparto constituye un acuerdo interno entre la Agencia y el tercero individualizado precedentemente, y en ningún caso altera, incrementa ni modifica las obligaciones de pago del Jugador establecidas en este Contrato.`
+    const pct = rc.porcentaje !== '' && rc.porcentaje != null ? parseFloat(rc.porcentaje) : null
+    const restante = pct !== null && !isNaN(pct) ? Math.round((100 - pct) * 100) / 100 : null
+    const pctStr = pct !== null && !isNaN(pct)
+      ? ` correspondiéndole a este último un ${pct}% (por ciento) de dicha comisión, quedando el ${restante}% (por ciento) restante para la Agencia`
+      : ', quedando el reparto y porcentaje respectivo entre ambos sujeto a lo que acuerden por instrumento separado'
+    quintoTexto += `\n\nSin perjuicio de lo anterior, las partes dejan constancia que la Agencia, representada por don ALDO CAMILO MALDONADO REBOLLEDO ya individualizado, podrá compartir la comisión pactada en el presente artículo con don/doña ${rc.nombre}${documentoStr} ${calidad}${pctStr}. Este reparto constituye un acuerdo interno entre la Agencia y el tercero individualizado precedentemente, y en ningún caso altera, incrementa ni modifica las obligaciones de pago del Jugador establecidas en este Contrato.`
   }
 
   const articulos = [
@@ -244,11 +248,11 @@ export async function generarContratoPDF(datos) {
     doc.setFont('helvetica', 'normal'); doc.setTextColor(...BLACK)
     const paragraphs = art.texto.split('\n')
     for (const para of paragraphs) {
-      if (!para.trim()) { y += 2; continue }
+      if (!para.trim()) { y += 1; continue }
       if (checkPage(y)) { addPageFn(); y = 20 }
       y = drawJustified(doc, para, X, y, W, LINE_H, checkPage, addPageFn)
     }
-    y += 4
+    y += 2.5
   }
 
   addHeader(doc, page, 99, logoData)
