@@ -43,6 +43,8 @@ export default function Documentos() {
     tutor2Nombre: '', tutor2Rut: '',
     dosTutores: false,
     tieneDerechosImagen: false,
+    representacionCompartida: false,
+    compartidaNombre: '', compartidaDocumento: '', compartidaAgenciaLicencia: '', compartidaPorcentaje: '',
   })
   const setC = (k,v) => setContratoForm(f=>({...f,[k]:v}))
 
@@ -83,6 +85,14 @@ export default function Documentos() {
         if (contratoForm.tutor1Nombre) tutores.push({ nombre: contratoForm.tutor1Nombre, rut: contratoForm.tutor1Rut })
         if (contratoForm.dosTutores && contratoForm.tutor2Nombre) tutores.push({ nombre: contratoForm.tutor2Nombre, rut: contratoForm.tutor2Rut })
       }
+      const representacionCompartida = contratoForm.representacionCompartida && contratoForm.compartidaNombre
+        ? {
+            nombre: contratoForm.compartidaNombre,
+            documento: contratoForm.compartidaDocumento,
+            agenciaLicencia: contratoForm.compartidaAgenciaLicencia,
+            porcentaje: contratoForm.compartidaPorcentaje,
+          }
+        : null
       const doc = await generarContratoPDF({
         jugador: {
           nombre: player.name,
@@ -99,6 +109,7 @@ export default function Documentos() {
         duracionAnios: contratoForm.duracionAnios,
         ciudad: contratoForm.ciudad,
         tieneDerechosImagen: contratoForm.tieneDerechosImagen,
+        representacionCompartida,
         logoUrl: 'https://qgjdphqmwgrkwfbxbyhc.supabase.co/storage/v1/object/public/player-media/logo_nfc_transparent.png',
       })
       const nombre = player.name.replace(/\s+/g,'_')
@@ -259,6 +270,43 @@ export default function Documentos() {
                 </div>
               </div>
 
+              {/* Representación compartida */}
+              <div style={{background:'rgba(201,168,76,0.06)',border:'1px solid rgba(201,168,76,0.2)',borderRadius:6,padding:14}}>
+                <div style={{display:'flex',alignItems:'flex-start',gap:10}}>
+                  <input type="checkbox" id="repCompartida" checked={contratoForm.representacionCompartida}
+                    onChange={e=>setC('representacionCompartida',e.target.checked)}
+                    style={{width:16,height:16,accentColor:GOLD,cursor:'pointer',marginTop:2,flexShrink:0}}/>
+                  <div style={{flex:1}}>
+                    <label htmlFor="repCompartida" style={{...LABEL,margin:0,cursor:'pointer',fontSize:12,color:GOLD}}>
+                      Representación compartida (comisión repartida con un tercero)
+                    </label>
+                    <div style={{fontSize:10,color:'rgba(255,255,255,0.35)',marginTop:4,lineHeight:1.5}}>
+                      Agrega un párrafo al <strong style={{color:'rgba(255,255,255,0.5)'}}>Artículo Quinto</strong> dejando constancia de que la Agencia comparte su comisión con un tercero (agente u otra persona vinculada). El tercero <strong style={{color:'rgba(255,255,255,0.5)'}}>no firma</strong> el contrato — Aldo Maldonado sigue siendo el único firmante por la Agencia. No modifica lo que paga el Jugador.
+                    </div>
+                  </div>
+                </div>
+                {contratoForm.representacionCompartida && (
+                  <div style={{display:'flex',flexDirection:'column',gap:10,marginTop:12}}>
+                    <div>
+                      <label style={LABEL}>NOMBRE DEL TERCERO</label>
+                      <input style={INPUT} value={contratoForm.compartidaNombre} onChange={e=>setC('compartidaNombre',e.target.value)} placeholder="Nombre completo"/>
+                    </div>
+                    <div>
+                      <label style={LABEL}>RUT / DOCUMENTO DE IDENTIDAD</label>
+                      <input style={INPUT} value={contratoForm.compartidaDocumento} onChange={e=>setC('compartidaDocumento',e.target.value)} placeholder="12.345.678-9 (opcional)"/>
+                    </div>
+                    <div>
+                      <label style={LABEL}>AGENCIA / LICENCIA FIFA (si aplica)</label>
+                      <input style={INPUT} value={contratoForm.compartidaAgenciaLicencia} onChange={e=>setC('compartidaAgenciaLicencia',e.target.value)} placeholder="Ej: Agencia XYZ, Licencia N° 123456 (dejar vacío si no es agente)"/>
+                    </div>
+                    <div>
+                      <label style={LABEL}>% DE LA COMISIÓN QUE LE CORRESPONDE</label>
+                      <input style={INPUT} type="number" min="0" max="100" value={contratoForm.compartidaPorcentaje} onChange={e=>setC('compartidaPorcentaje',e.target.value)} placeholder="50"/>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {menor && (
                 <div style={{background:'rgba(251,191,36,0.08)',border:'1px solid rgba(251,191,36,0.25)',borderRadius:6,padding:14}}>
                   <div style={{fontSize:11,color:'#fbbf24',fontWeight:600,marginBottom:12}}>DATOS DEL TUTOR / REPRESENTANTE LEGAL</div>
@@ -304,6 +352,7 @@ export default function Documentos() {
               <div><span style={{color:'rgba(255,255,255,0.35)'}}>Duración:</span> {contratoForm.duracionAnios} año{contratoForm.duracionAnios>1?'s':''}</div>
               <div><span style={{color:'rgba(255,255,255,0.35)'}}>Firmantes:</span> {menor ? `Jugador + ${1+(contratoForm.dosTutores?1:0)} tutor(es) + Agencia` : 'Jugador + Agencia'}</div>
               <div><span style={{color:'rgba(255,255,255,0.35)'}}>Cláusula imagen:</span> {contratoForm.tieneDerechosImagen ? <span style={{color:GOLD}}>Art. 11 — USD 150.000 fijo</span> : <span style={{color:'rgba(255,255,255,0.3)'}}>Art. 10 — Anexo A</span>}</div>
+              <div><span style={{color:'rgba(255,255,255,0.35)'}}>Repr. compartida:</span> {contratoForm.representacionCompartida && contratoForm.compartidaNombre ? <span style={{color:GOLD}}>{contratoForm.compartidaNombre}{contratoForm.compartidaPorcentaje ? ` (${contratoForm.compartidaPorcentaje}%)` : ''}</span> : <span style={{color:'rgba(255,255,255,0.3)'}}>No</span>}</div>
             </div>
             <div style={{background:'rgba(255,255,255,0.03)',borderRadius:6,padding:12,fontSize:11,color:'rgba(255,255,255,0.3)',marginBottom:20,lineHeight:1.6}}>
               El PDF incluirá todos los artículos del contrato estándar NFC (Arts. I al XIII) con los datos del jugador precargados. La sección de firmas se adaptará automáticamente según sea menor de edad o no.

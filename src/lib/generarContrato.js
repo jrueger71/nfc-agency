@@ -20,7 +20,6 @@ function nacionalidadAdjetivo(nationality, gender) {
   const map = {
     'chile':      esFemenino ? 'chilena' : 'chileno',
     'argentina':  esFemenino ? 'argentina' : 'argentino',
-    'argentina':  esFemenino ? 'argentina' : 'argentino',
     'uruguay':    esFemenino ? 'uruguaya' : 'uruguayo',
     'brasil':     esFemenino ? 'brasileña' : 'brasileño',
     'brazil':     esFemenino ? 'brasileña' : 'brasileño',
@@ -115,6 +114,7 @@ export async function generarContratoPDF(datos) {
     duracionAnios,
     ciudad,
     tieneDerechosImagen = false,
+    representacionCompartida = null, // { nombre, documento, agenciaLicencia, porcentaje }
   } = datos
 
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
@@ -176,12 +176,29 @@ export async function generarContratoPDF(datos) {
     ? { jurisdiccion: 'DÉCIMO SEGUNDO', normativa: 'DÉCIMO TERCERO', domicilio: 'DÉCIMO CUARTO' }
     : { jurisdiccion: 'DÉCIMO PRIMERO', normativa: 'DÉCIMO SEGUNDO', domicilio: 'DÉCIMO TERCERO' }
 
+  // Cláusula opcional de representación compartida: la Agencia comparte su comisión con un
+  // tercero (agente de otra agencia o persona vinculada a la gestión del Jugador). El tercero
+  // NO firma este Contrato — solo queda referenciado en esta cláusula. La firma de la Agencia
+  // sigue siendo exclusivamente de Aldo Maldonado como agente titular. (Distinto del caso de
+  // "representación conjunta", donde un tercero SÍ firma como parte contratante — no es este caso.)
+  let quintoTexto = 'Como consecuencia del presente Contrato de Representación y Prestación de Servicios, por la actividad de la Agencia en la negociación, suscripción y renovación de contratos profesionales para el Jugador, el Jugador se obliga a pagar a la Agencia el siguiente honorario:\n\na.- Cinco por ciento (5%) del sueldo bruto anual igual o inferior a 200.000 USD que perciba contractualmente el Jugador durante las temporadas deportivas que se desarrollen en Chile. Por las sumas superiores a los 200.000 USD pagará un honorario del tres por ciento (3%) del referido exceso.\n\nb.- Cinco por ciento (5%) del sueldo bruto anual igual o inferior a 200.000 USD del sueldo bruto anual que perciba contractualmente el Jugador durante las temporadas deportivas en el extranjero. Por las sumas superiores a los 200.000 USD pagará un honorario del tres por ciento (3%).\n\nAsimismo, el Jugador abonará a la Agencia un diez por ciento (10%) de las retribuciones que por contratos de imagen perciba durante toda la vigencia de dichos contratos.'
+
+  if (representacionCompartida && representacionCompartida.nombre) {
+    const rc = representacionCompartida
+    const calidad = rc.agenciaLicencia
+      ? `en su calidad de Agente de Fútbol vinculado a ${rc.agenciaLicencia}`
+      : 'en su calidad de tercero vinculado a la gestión del Jugador'
+    const documentoStr = rc.documento ? `, cédula de identidad o documento número ${rc.documento},` : ','
+    const pctStr = rc.porcentaje ? ` correspondiéndole a este último un ${rc.porcentaje}% (por ciento) de dicha comisión` : ''
+    quintoTexto += `\n\nSin perjuicio de lo anterior, las partes dejan constancia que la Agencia podrá compartir la comisión pactada en el presente artículo con don/doña ${rc.nombre}${documentoStr} ${calidad}${pctStr}. Este reparto constituye un acuerdo interno entre la Agencia y el tercero individualizado precedentemente, y en ningún caso altera, incrementa ni modifica las obligaciones de pago del Jugador establecidas en este Contrato.`
+  }
+
   const articulos = [
     { titulo: 'PRIMERO: ANTECEDENTES DE LA SOCIEDAD.', texto: 'La Agencia presta los servicios de representación de Jugadores Profesionales de Fútbol, dedicándose de forma profesional al asesoramiento y representación de éstos, comprendiendo este servicio: a) La representación del Jugador ante su club y/o terceros clubes interesados en contar con los servicios de jugador profesional de fútbol; b) El asesoramiento y negociación de sus contratos profesionales como futbolista profesional y; c) El asesoramiento y negociación de sus contratos publicitarios o de imagen que celebre el Jugador con empresas publicitarias; y, d) En general, la defensa de los intereses profesionales del Jugador que contrate sus servicios.' },
     { titulo: 'SEGUNDO: OBJETO DEL CONTRATO.', texto: 'Por el presente Contrato, el Jugador contrata los servicios de la Agencia, quien, a través de su representante compareciente, acepta prestar sus servicios profesionales, siendo el cometido fundamental de los Agentes de Fútbol que de ella dependen, la promoción y renovación de contratos profesionales para el Jugador en su condición de jugador de fútbol profesional, así como también la promoción y renovación de contratos para el Jugador que tengan por objeto la explotación comercial de su imagen y/o cualquier otro acuerdo comercial en que se pueda ver involucrado a través de su carrera como jugador profesional de fútbol.' },
     { titulo: 'TERCERO: DURACIÓN.', texto: `El presente contrato de prestación de servicios tendrá una duración de ${duracionAnios || 2} años, a contar de la fecha del presente instrumento. Este plazo sólo podrá prorrogarse por medio de un nuevo contrato de representación.` },
     { titulo: 'CUARTO: EXCLUSIVIDAD, ÁMBITO TERRITORIAL Y RECONOCIMIENTO DE OPERACIONES.', texto: 'Los derechos del presente contrato y el encargo otorgado por el Jugador a la Sociedad, son absolutamente EXCLUSIVOS, de forma y manera que el Jugador encarga a la Sociedad la representación, defensa, negociación y renovación de sus contratos profesionales y de imagen, con un ámbito mundial y con exclusión de otras personas naturales o jurídicas en lo que diga relación con su profesión de jugador profesional de fútbol.\n\nPara el caso de incumplimiento del Jugador de la exclusividad otorgada a la Sociedad, esto es cuando terceros distintos de la Agencia intervengan, promuevan o celebren contratos en representación y beneficio del Jugador, éste acepta y se obliga expresamente a pagar a la Agencia una indemnización equivalente al 10% (diez por ciento) de la totalidad de las cantidades de dinero que perciba por la celebración de dichos contratos, sin perjuicio de la facultad de la Sociedad y su Representante de resolver el presente Contrato.' },
-    { titulo: 'QUINTO: REMUNERACIÓN Y FORMA DE PAGO.', texto: 'Como consecuencia del presente Contrato de Representación y Prestación de Servicios, por la actividad de la Agencia en la negociación, suscripción y renovación de contratos profesionales para el Jugador, el Jugador se obliga a pagar a la Agencia el siguiente honorario:\n\na.- Cinco por ciento (5%) del sueldo bruto anual igual o inferior a 200.000 USD que perciba contractualmente el Jugador durante las temporadas deportivas que se desarrollen en Chile. Por las sumas superiores a los 200.000 USD pagará un honorario del tres por ciento (3%) del referido exceso.\n\nb.- Cinco por ciento (5%) del sueldo bruto anual igual o inferior a 200.000 USD del sueldo bruto anual que perciba contractualmente el Jugador durante las temporadas deportivas en el extranjero. Por las sumas superiores a los 200.000 USD pagará un honorario del tres por ciento (3%).\n\nAsimismo, el Jugador abonará a la Agencia un diez por ciento (10%) de las retribuciones que por contratos de imagen perciba durante toda la vigencia de dichos contratos.' },
+    { titulo: 'QUINTO: REMUNERACIÓN Y FORMA DE PAGO.', texto: quintoTexto },
     { titulo: 'SEXTO: FUNCIONES Y OBLIGACIONES DE LOS REPRESENTANTES.', texto: 'La Agencia realizará las actividades y gestiones comerciales necesarias para dar cumplimiento a los servicios contratados, prestando sus servicios de forma diligente y con lealtad. Actuará siempre en defensa de los intereses que se le confían y desarrollará sus actividades dentro de las normas e instrucciones que reciba del Jugador, guardando el buen nombre y prestigio de su representado en todas las actuaciones que realice.' },
     { titulo: 'SÉPTIMO: DECLARACIÓN.', texto: 'El Jugador, en este acto y por medio del presente instrumento declara expresamente no tener firmado ningún otro Contrato de Representación con otra Agencia o Agentes de Fútbol.' },
     { titulo: 'OCTAVO: OBLIGACIONES DEL JUGADOR.', texto: 'El Jugador asume las siguientes obligaciones:\n\n8.1. Exclusividad. Respetar estrictamente la exclusividad conferida a la Agencia, absteniéndose de contratar o negociar directamente o a través de terceros sin conocimiento y autorización expresa de la Agencia.\n\n8.2. Información. Informar oportunamente a la Agencia sobre cualquier oferta de contrato, negociación o propuesta que reciba de terceros.\n\n8.3. Diligencia. Actuar con la máxima diligencia y buena fe en el cumplimiento de sus compromisos deportivos.\n\n8.4. Cumplimiento de Compromisos. Respetar y cumplir cabalmente todos los contratos laborales y compromisos comerciales y deportivos que se celebren con la intermediación de la Agencia.' },
