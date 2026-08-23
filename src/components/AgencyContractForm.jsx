@@ -22,7 +22,7 @@ const LABEL = {
 }
 const GOLD = '#C9A84C'
 
-export default function AgencyContractForm({ contract, playerId, playerName, onSave, onCancel }) {
+export default function AgencyContractForm({ contract, playerId, playerName, players, onSave, onCancel }) {
   const isEdit = !!contract?.id
   const [form, setForm] = useState({
     tipo: 'Contrato',
@@ -33,8 +33,10 @@ export default function AgencyContractForm({ contract, playerId, playerName, onS
     contract_pdf_url: '',
     notas: '',
     ...contract,
-    player_id: playerId || contract?.player_id,
+    player_id: playerId || contract?.player_id || '',
   })
+  // Sin playerId fijo (ej. boton "+ CONTRATO AGENCIA" general): hay que elegir el jugador aqui.
+  const necesitaSelector = !playerId && !contract?.player_id
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [msg, setMsg] = useState('')
@@ -77,6 +79,7 @@ export default function AgencyContractForm({ contract, playerId, playerName, onS
   }
 
   const handleSave = async () => {
+    if (!form.player_id) { setMsg('Error: debes seleccionar un jugador'); return }
     setLoading(true); setMsg('')
 
     const payload = {
@@ -111,6 +114,18 @@ export default function AgencyContractForm({ contract, playerId, playerName, onS
       {playerName && (
         <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 16 }}>
           Jugador: <span style={{ color: '#fff', fontWeight: 600 }}>{playerName}</span>
+        </div>
+      )}
+
+      {necesitaSelector && (
+        <div style={{ marginBottom: 16 }}>
+          <label style={LABEL}>JUGADOR</label>
+          <select style={INPUT} value={form.player_id || ''} onChange={e => set('player_id', e.target.value)}>
+            <option value="">— Selecciona un jugador —</option>
+            {(players || []).map(p => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
         </div>
       )}
 

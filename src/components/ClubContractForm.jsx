@@ -24,7 +24,7 @@ const GOLD = '#C9A84C'
 
 const TIPOS = ['Contrato', 'Renovación', 'Préstamo', 'Cesión']
 
-export default function ClubContractForm({ contract, playerId, playerName, onSave, onCancel }) {
+export default function ClubContractForm({ contract, playerId, playerName, players, onSave, onCancel }) {
   const isEdit = !!contract?.id
   const [form, setForm] = useState({
     tipo: 'Contrato',
@@ -42,8 +42,10 @@ export default function ClubContractForm({ contract, playerId, playerName, onSav
     contract_pdf_url: '',
     notas: '',
     ...contract,
-    player_id: playerId || contract?.player_id,
+    player_id: playerId || contract?.player_id || '',
   })
+  // Sin playerId fijo (ej. boton "+ CONTRATO CLUB" general): hay que elegir el jugador aqui.
+  const necesitaSelector = !playerId && !contract?.player_id
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [msg, setMsg] = useState('')
@@ -87,6 +89,7 @@ export default function ClubContractForm({ contract, playerId, playerName, onSav
   }
 
   const handleSave = async () => {
+    if (!form.player_id) { setMsg('Error: debes seleccionar un jugador'); return }
     if (!form.club_name) { setMsg('El nombre del club es requerido'); return }
     setLoading(true); setMsg('')
 
@@ -132,6 +135,18 @@ export default function ClubContractForm({ contract, playerId, playerName, onSav
       {playerName && (
         <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 16 }}>
           Jugador: <span style={{ color: '#fff', fontWeight: 600 }}>{playerName}</span>
+        </div>
+      )}
+
+      {necesitaSelector && (
+        <div style={{ marginBottom: 16 }}>
+          <label style={LABEL}>JUGADOR</label>
+          <select style={INPUT} value={form.player_id || ''} onChange={e => set('player_id', e.target.value)}>
+            <option value="">— Selecciona un jugador —</option>
+            {(players || []).map(p => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
         </div>
       )}
 
