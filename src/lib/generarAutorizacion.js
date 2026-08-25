@@ -146,7 +146,7 @@ export function generarAutorizacionPDF(datos) {
 
   // Art. 1
   const jugadoresStr = jugadores.map(j => {
-    let str = `${j.nombre.toUpperCase()}${j.rut ? `, RUT: ${formatRut(j.rut)}` : ''}`
+    let str = `${j.nombre.toUpperCase()}${j.rut ? `, RUT: ${formatRut(j.rut, j.nationality)}` : ''}`
     if (j.clubActual) str += `, actualmente con contrato en ${j.clubActual.toUpperCase()}`
     return str
   }).join('; ')
@@ -220,7 +220,7 @@ export function generarPoderEspecialPDF(datos) {
 
   // Art. 1 — jugadores con club actual
   const jugadoresStr = jugadores.map(j => {
-    let str = `don/doña ${j.nombre.toUpperCase()}${j.rut ? `, RUT ${formatRut(j.rut)}` : ''}`
+    let str = `don/doña ${j.nombre.toUpperCase()}${j.rut ? `, RUT ${formatRut(j.rut, j.nationality)}` : ''}`
     if (j.clubActual) str += `, quien se encuentra con contrato vigente con el club ${j.clubActual.toUpperCase()}`
     else str += ', quien se encuentra actualmente en período de negociación libre'
     return str

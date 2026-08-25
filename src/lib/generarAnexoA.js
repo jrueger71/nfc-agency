@@ -98,7 +98,7 @@ export function generarAnexoAPDF(datos) {
     headStyles: { fillColor: GOLD, textColor: [0, 0, 0], fontStyle: 'bold' },
     body: [
       ['Nombre del jugador:', jugador.nombre.toUpperCase()],
-      ['RUT:', formatRut(jugador.rut)],
+      ['RUT:', formatRut(jugador.rut, jugador.nationality)],
       ['Fecha de nacimiento:', jugador.fechaNac ? fmtDate(jugador.fechaNac) : '—'],
       ['Período del anexo:', periodoAnexo || new Date().getFullYear().toString()],
       ['Agencia:', 'SOCIEDAD NUEVA FÚTBOL CHILE SpA'],
@@ -220,7 +220,7 @@ export function generarAnexoAPDF(datos) {
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(...GRAY)
   doc.text(`Nombre: ${jugador.nombre}`, 50, y + 30, { align: 'center' })
-  doc.text(`RUT: ${formatRut(jugador.rut)}`, 50, y + 35, { align: 'center' })
+  doc.text(`RUT: ${formatRut(jugador.rut, jugador.nationality)}`, 50, y + 35, { align: 'center' })
   doc.text('SOCIEDAD NUEVA FÚTBOL CHILE SpA', 155, y + 30, { align: 'center' })
   doc.text('RUT: 77.971.556-6', 155, y + 35, { align: 'center' })
 

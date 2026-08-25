@@ -110,7 +110,7 @@ export function generarListadoJugadoresPDF(datos) {
   const tableData = jugadores.map((j, i) => colDefs.map(c => {
     if (c.key === 'n') return i + 1
     if (c.key === 'nombre') return j.nombre || '—'
-    if (c.key === 'rut') return formatRut(j.rut) || '—'
+    if (c.key === 'rut') return formatRut(j.rut, j.nationality) || '—'
     if (c.key === 'posicion') return j.posicion || '—'
     if (c.key === 'club') return j.club || '—'
     if (c.key === 'estado') return j.estado || (j.contractActive ? 'Activo' : 'Libre')

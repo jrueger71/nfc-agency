@@ -183,7 +183,7 @@ export default function PlayerForm({ player, onSave, onCancel }) {
         <div>
           <label style={LABEL}>RUT</label>
           <input style={INPUT} value={form.rut} onChange={e => set('rut', e.target.value)}
-            onBlur={e => set('rut', formatRut(e.target.value))} placeholder="12.345.678-9" />
+            onBlur={e => set('rut', formatRut(e.target.value, form.nationality))} placeholder="12.345.678-9" />
         </div>
         <div>
           <label style={LABEL}>FECHA DE NACIMIENTO</label>

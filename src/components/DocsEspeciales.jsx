@@ -56,7 +56,7 @@ export default function DocsEspeciales() {
 
   useEffect(() => {
     Promise.all([
-      supabase.from('players').select('id,name,rut,estado').order('name'),
+      supabase.from('players').select('id,name,rut,nationality,estado').order('name'),
       supabase.from('club_info').select('player_id,club_name,contract_active'),
     ]).then(([{data: pl}, {data: ci}]) => {
       setPlayers(pl || [])
@@ -74,7 +74,7 @@ export default function DocsEspeciales() {
   )
 
   const addJugador = (player) => {
-    setJugadoresSeleccionados(prev => [...prev, { id: player.id, nombre: player.name, rut: player.rut || '', clubActual: clubMap[player.id] || '' }])
+    setJugadoresSeleccionados(prev => [...prev, { id: player.id, nombre: player.name, rut: player.rut || '', nationality: player.nationality, clubActual: clubMap[player.id] || '' }])
     setPlayerSearch('')
   }
 
@@ -214,7 +214,7 @@ export default function DocsEspeciales() {
                   <div key={j.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 5, marginBottom: 6 }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 13, color: '#fff', fontWeight: 600 }}>{j.nombre}</div>
-                      {j.rut && <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>RUT: {formatRut(j.rut)}</div>}
+                      {j.rut && <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>RUT: {formatRut(j.rut, j.nationality)}</div>}
                       <input style={{ ...INPUT, marginTop: 4, fontSize: 11, padding: '4px 8px' }}
                         value={j.clubActual} onChange={e => updateJugadorClub(j.id, e.target.value)}
                         placeholder="Club actual (opcional — dejar vacío si libre)" />
@@ -435,6 +435,7 @@ export function ListadoJugadores({ players, clubMap }) {
       const jugadoresData = jugadoresIncluidos.map(p => ({
         nombre: p.name,
         rut: p.rut || '',
+        nationality: p.nationality,
         posicion: clubMap[p.id]?.position || '',
         club: clubMap[p.id]?.club_name || '',
         contractActive: !!clubMap[p.id]?.contract_active,
@@ -518,7 +519,7 @@ export function ListadoJugadores({ players, clubMap }) {
                     style={{width:15,height:15,accentColor:GOLD_C,cursor:'pointer'}}/>
                 </td>
                 <td style={{color:'#fff',fontWeight:500}}>{p.name}</td>
-                <td style={{fontFamily:'monospace',fontSize:11}}>{formatRut(p.rut)||'—'}</td>
+                <td style={{fontFamily:'monospace',fontSize:11}}>{formatRut(p.rut, p.nationality)||'—'}</td>
                 <td>{clubMap[p.id]?.position||'—'}</td>
                 <td>{clubMap[p.id]?.club_name||'—'}</td>
                 <td><span className={`pill ${clubMap[p.id]?.contract_active?'pill-ok':'pill-off'}`}>{clubMap[p.id]?.contract_active?'ACTIVO':'—'}</span></td>

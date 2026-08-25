@@ -658,7 +658,7 @@ export default function PlayersAdmin() {
                   return (
                     <tr key={p.id}>
                       <td style={{ color: '#fff', fontWeight: 500 }}>{p.name}</td>
-                      <td style={{ fontFamily: 'monospace', fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>{formatRut(p.rut) || '—'}</td>
+                      <td style={{ fontFamily: 'monospace', fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>{formatRut(p.rut, p.nationality) || '—'}</td>
                       <td>{ci.position || '—'}</td>
                       <td>{ci.club_name || '—'}</td>
                       <td>{fmtDate(p.birth_date)}</td>
