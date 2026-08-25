@@ -34,6 +34,8 @@ export default function Documentos() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('contrato')
   const [generating, setGenerating] = useState(false)
+  const [docsGenerados, setDocsGenerados] = useState([])
+  const [msgHistorial, setMsgHistorial] = useState('')
 
   // Contrato form state
   const [contratoForm, setContratoForm] = useState({
@@ -74,7 +76,39 @@ export default function Documentos() {
       }
       setLoading(false)
     })
+    cargarHistorial(playerId)
   }, [playerId])
+
+  const cargarHistorial = (pid) => {
+    supabase.from('generated_documents').select('*').eq('player_id', pid).order('created_at', { ascending: false })
+      .then(({ data }) => setDocsGenerados(data || []))
+  }
+
+  // Sube el PDF generado a Storage y guarda un registro de historial (no bloquea la descarga si falla)
+  const guardarHistorial = async (tipo, doc, datosForm) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      const nombreArchivo = (player?.name || 'jugador').replace(/\s+/g, '_')
+      const path = `contratos/historial/${tipo.replace(/\s+/g,'_')}_${nombreArchivo}_${Date.now()}.pdf`
+      const blob = doc.output('blob')
+      const { error: upErr } = await supabase.storage.from('player-media').upload(path, blob, { contentType: 'application/pdf' })
+      if (upErr) throw upErr
+      const { data: { publicUrl } } = supabase.storage.from('player-media').getPublicUrl(path)
+      const { error: insErr } = await supabase.from('generated_documents').insert({
+        player_id: playerId,
+        tipo,
+        pdf_url: publicUrl,
+        datos: datosForm,
+        created_by_email: user?.email || null,
+      })
+      if (insErr) throw insErr
+      cargarHistorial(playerId)
+    } catch (e) {
+      console.error('No se pudo guardar el historial del documento:', e)
+      setMsgHistorial('⚠ El PDF se descargó, pero no se pudo guardar en el historial')
+      setTimeout(() => setMsgHistorial(''), 5000)
+    }
+  }
 
   const handleGenerarContrato = async () => {
     if (!player) return
@@ -115,6 +149,7 @@ export default function Documentos() {
       })
       const nombre = player.name.replace(/\s+/g,'_')
       doc.save(`Contrato_NFC_${nombre}_${new Date().getFullYear()}.pdf`)
+      guardarHistorial('Contrato', doc, contratoForm)
     } catch(e) {
       console.error(e)
     }
@@ -157,6 +192,7 @@ export default function Documentos() {
       })
       const nombre = player.name.replace(/\s+/g,'_')
       doc.save(`AnexoA_NFC_${nombre}_${new Date().getFullYear()}.pdf`)
+      guardarHistorial('Anexo A', doc, anexoForm)
     } catch(e) {
       console.error(e)
     }
@@ -361,6 +397,8 @@ export default function Documentos() {
             <button className="btn-gold" onClick={handleGenerarContrato} disabled={generating} style={{width:'100%',padding:12,fontSize:15}}>
               {generating ? 'GENERANDO...' : '⬇ DESCARGAR CONTRATO PDF'}
             </button>
+            {msgHistorial && <div style={{fontSize:11,color:'#fbbf24',marginTop:8}}>{msgHistorial}</div>}
+            <HistorialDocumentos docs={docsGenerados.filter(d=>d.tipo==='Contrato')} onUsarDatos={d=>setContratoForm(f=>({...f,...d.datos}))} />
           </div>
         </div>
       )}
@@ -467,9 +505,41 @@ export default function Documentos() {
             <button className="btn-gold" onClick={handleGenerarAnexo} disabled={generating} style={{width:'100%',padding:12,fontSize:15}}>
               {generating ? 'GENERANDO...' : '⬇ DESCARGAR ANEXO A PDF'}
             </button>
+            {msgHistorial && <div style={{fontSize:11,color:'#fbbf24',marginTop:8}}>{msgHistorial}</div>}
+            <HistorialDocumentos docs={docsGenerados.filter(d=>d.tipo==='Anexo A')} onUsarDatos={d=>setAnexoForm(f=>({...f,...d.datos}))} />
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function HistorialDocumentos({ docs, onUsarDatos }) {
+  if (!docs || docs.length === 0) return null
+  return (
+    <div style={{marginTop:20,paddingTop:16,borderTop:'1px solid rgba(255,255,255,0.06)'}}>
+      <div style={{fontSize:11,color:'rgba(255,255,255,0.35)',fontWeight:600,letterSpacing:1.5,marginBottom:10}}>
+        DOCUMENTOS GENERADOS ANTERIORMENTE ({docs.length})
+      </div>
+      <div style={{display:'flex',flexDirection:'column',gap:8,maxHeight:220,overflowY:'auto'}}>
+        {docs.map(d => (
+          <div key={d.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,background:'rgba(255,255,255,0.03)',borderRadius:6,padding:'8px 10px'}}>
+            <div style={{fontSize:11,color:'rgba(255,255,255,0.55)'}}>
+              {new Date(d.created_at).toLocaleDateString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric'})}
+              {' '}{new Date(d.created_at).toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'})}
+              {d.created_by_email && <span style={{color:'rgba(255,255,255,0.3)'}}> · {d.created_by_email}</span>}
+            </div>
+            <div style={{display:'flex',gap:6,flexShrink:0}}>
+              <button onClick={()=>onUsarDatos(d)} style={{fontSize:10,color:GOLD,background:'rgba(201,168,76,0.1)',border:'1px solid rgba(201,168,76,0.3)',borderRadius:4,padding:'4px 8px',cursor:'pointer',fontFamily:'inherit'}}>
+                CARGAR DATOS
+              </button>
+              <a href={d.pdf_url} target="_blank" rel="noreferrer" style={{fontSize:10,color:'#4ade80',background:'rgba(74,222,128,0.1)',border:'1px solid rgba(74,222,128,0.3)',borderRadius:4,padding:'4px 8px',textDecoration:'none',fontFamily:'inherit'}}>
+                ⬇ DESCARGAR
+              </a>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
