@@ -1,5 +1,6 @@
 // Generador de Documentos de Autorización — NFC
 import jsPDF from 'jspdf'
+import { formatRut } from './formatRut'
 
 const NAVY = [27, 43, 94]
 const GOLD = [201, 168, 76]
@@ -113,7 +114,7 @@ function drawFirmas(doc, y, firmante = 'aldo') {
   doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...NAVY)
   doc.text(f.nombre, X + sigW / 2, y + 26, { align: 'center', maxWidth: sigW })
   doc.setFont('helvetica', 'normal'); doc.setTextColor(...GRAY); doc.setFontSize(7.5)
-  if (f.rut !== '—') doc.text(`RUT: ${f.rut}`, X + sigW / 2, y + 31, { align: 'center' })
+  if (f.rut !== '—') doc.text(`RUT: ${formatRut(f.rut)}`, X + sigW / 2, y + 31, { align: 'center' })
   doc.text(f.cargo, X + sigW / 2, y + 36, { align: 'center', maxWidth: sigW })
   doc.text(f.cargo2, X + sigW / 2, y + 41, { align: 'center', maxWidth: sigW })
 }
@@ -145,7 +146,7 @@ export function generarAutorizacionPDF(datos) {
 
   // Art. 1
   const jugadoresStr = jugadores.map(j => {
-    let str = `${j.nombre.toUpperCase()}${j.rut ? `, RUT: ${j.rut}` : ''}`
+    let str = `${j.nombre.toUpperCase()}${j.rut ? `, RUT: ${formatRut(j.rut)}` : ''}`
     if (j.clubActual) str += `, actualmente con contrato en ${j.clubActual.toUpperCase()}`
     return str
   }).join('; ')
@@ -219,7 +220,7 @@ export function generarPoderEspecialPDF(datos) {
 
   // Art. 1 — jugadores con club actual
   const jugadoresStr = jugadores.map(j => {
-    let str = `don/doña ${j.nombre.toUpperCase()}${j.rut ? `, RUT ${j.rut}` : ''}`
+    let str = `don/doña ${j.nombre.toUpperCase()}${j.rut ? `, RUT ${formatRut(j.rut)}` : ''}`
     if (j.clubActual) str += `, quien se encuentra con contrato vigente con el club ${j.clubActual.toUpperCase()}`
     else str += ', quien se encuentra actualmente en período de negociación libre'
     return str

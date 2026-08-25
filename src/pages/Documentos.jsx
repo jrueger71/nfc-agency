@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { generarContratoPDF } from '../lib/generarContrato'
 import { generarAnexoAPDF } from '../lib/generarAnexoA'
+import { formatRut } from '../lib/formatRut'
 
 const GOLD = '#C9A84C'
 const INPUT = {
@@ -215,7 +216,7 @@ export default function Documentos() {
         </div>
         <div>
           <div className="bebas" style={{fontSize:20,color:'#fff'}}>{player.name}</div>
-          <div style={{fontSize:13,color:'rgba(255,255,255,0.45)'}}>{player.rut} · {player.position||'—'} · {player.club_name||'Sin club'}</div>
+          <div style={{fontSize:13,color:'rgba(255,255,255,0.45)'}}>{formatRut(player.rut)} · {player.position||'—'} · {player.club_name||'Sin club'}</div>
           {menor && <span style={{fontSize:11,background:'rgba(251,191,36,0.15)',color:'#fbbf24',border:'1px solid rgba(251,191,36,0.3)',borderRadius:4,padding:'2px 8px',marginTop:4,display:'inline-block'}}>MENOR DE EDAD — requiere datos de tutor</span>}
         </div>
         <div style={{marginLeft:'auto',textAlign:'right'}}>
@@ -345,7 +346,7 @@ export default function Documentos() {
             <div className="bebas" style={{fontSize:15,letterSpacing:2,color:GOLD,marginBottom:16}}>VISTA PREVIA</div>
             <div style={{fontSize:12,color:'rgba(255,255,255,0.5)',lineHeight:1.8,marginBottom:20}}>
               <div><span style={{color:'rgba(255,255,255,0.35)'}}>Jugador:</span> {player.name}</div>
-              <div><span style={{color:'rgba(255,255,255,0.35)'}}>RUT:</span> {player.rut}</div>
+              <div><span style={{color:'rgba(255,255,255,0.35)'}}>RUT:</span> {formatRut(player.rut)}</div>
               <div><span style={{color:'rgba(255,255,255,0.35)'}}>Domicilio:</span> {contactInfo?.address||'Sin registrar'}{contactInfo?.comuna ? ', ' + contactInfo.comuna : ''}</div>
               <div><span style={{color:'rgba(255,255,255,0.35)'}}>Nacionalidad:</span> {player.nationality||'Chile'}</div>
               <div><span style={{color:'rgba(255,255,255,0.35)'}}>Fecha contrato:</span> {contratoForm.fechaContrato}</div>
@@ -448,7 +449,7 @@ export default function Documentos() {
             <div className="bebas" style={{fontSize:15,letterSpacing:2,color:GOLD,marginBottom:16}}>RESUMEN ANEXO A</div>
             <div style={{fontSize:12,color:'rgba(255,255,255,0.5)',lineHeight:1.8,marginBottom:16}}>
               <div><span style={{color:'rgba(255,255,255,0.35)'}}>Jugador:</span> {player.name}</div>
-              <div><span style={{color:'rgba(255,255,255,0.35)'}}>RUT:</span> {player.rut}</div>
+              <div><span style={{color:'rgba(255,255,255,0.35)'}}>RUT:</span> {formatRut(player.rut)}</div>
               <div><span style={{color:'rgba(255,255,255,0.35)'}}>Período:</span> {anexoForm.periodoAnexo}</div>
               <div><span style={{color:'rgba(255,255,255,0.35)'}}>Registros sistema:</span> {transactions.length}</div>
               <div><span style={{color:'rgba(255,255,255,0.35)'}}>Registros manuales:</span> {anexoForm.extraRows.length}</div>

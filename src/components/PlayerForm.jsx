@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { formatRut } from '../lib/formatRut'
 
 const INPUT = {
   width: '100%',
@@ -181,7 +182,8 @@ export default function PlayerForm({ player, onSave, onCancel }) {
         </div>
         <div>
           <label style={LABEL}>RUT</label>
-          <input style={INPUT} value={form.rut} onChange={e => set('rut', e.target.value)} placeholder="12.345.678-9" />
+          <input style={INPUT} value={form.rut} onChange={e => set('rut', e.target.value)}
+            onBlur={e => set('rut', formatRut(e.target.value))} placeholder="12.345.678-9" />
         </div>
         <div>
           <label style={LABEL}>FECHA DE NACIMIENTO</label>

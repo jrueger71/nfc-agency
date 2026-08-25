@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { generarAutorizacionPDF, generarPoderEspecialPDF } from '../lib/generarAutorizacion'
+import { formatRut } from '../lib/formatRut'
 
 const GOLD = '#C9A84C'
 const INPUT = {
@@ -213,7 +214,7 @@ export default function DocsEspeciales() {
                   <div key={j.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 5, marginBottom: 6 }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 13, color: '#fff', fontWeight: 600 }}>{j.nombre}</div>
-                      {j.rut && <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>RUT: {j.rut}</div>}
+                      {j.rut && <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>RUT: {formatRut(j.rut)}</div>}
                       <input style={{ ...INPUT, marginTop: 4, fontSize: 11, padding: '4px 8px' }}
                         value={j.clubActual} onChange={e => updateJugadorClub(j.id, e.target.value)}
                         placeholder="Club actual (opcional — dejar vacío si libre)" />
@@ -517,7 +518,7 @@ export function ListadoJugadores({ players, clubMap }) {
                     style={{width:15,height:15,accentColor:GOLD_C,cursor:'pointer'}}/>
                 </td>
                 <td style={{color:'#fff',fontWeight:500}}>{p.name}</td>
-                <td style={{fontFamily:'monospace',fontSize:11}}>{p.rut||'—'}</td>
+                <td style={{fontFamily:'monospace',fontSize:11}}>{formatRut(p.rut)||'—'}</td>
                 <td>{clubMap[p.id]?.position||'—'}</td>
                 <td>{clubMap[p.id]?.club_name||'—'}</td>
                 <td><span className={`pill ${clubMap[p.id]?.contract_active?'pill-ok':'pill-off'}`}>{clubMap[p.id]?.contract_active?'ACTIVO':'—'}</span></td>

@@ -1,6 +1,7 @@
 // Generador de Anexo A — Detalle de Inversión
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
+import { formatRut } from './formatRut'
 
 const NAVY = [27, 43, 94]
 const GOLD = [201, 168, 76]
@@ -97,7 +98,7 @@ export function generarAnexoAPDF(datos) {
     headStyles: { fillColor: GOLD, textColor: [0, 0, 0], fontStyle: 'bold' },
     body: [
       ['Nombre del jugador:', jugador.nombre.toUpperCase()],
-      ['RUT:', jugador.rut],
+      ['RUT:', formatRut(jugador.rut)],
       ['Fecha de nacimiento:', jugador.fechaNac ? fmtDate(jugador.fechaNac) : '—'],
       ['Período del anexo:', periodoAnexo || new Date().getFullYear().toString()],
       ['Agencia:', 'SOCIEDAD NUEVA FÚTBOL CHILE SpA'],
@@ -219,7 +220,7 @@ export function generarAnexoAPDF(datos) {
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(...GRAY)
   doc.text(`Nombre: ${jugador.nombre}`, 50, y + 30, { align: 'center' })
-  doc.text(`RUT: ${jugador.rut}`, 50, y + 35, { align: 'center' })
+  doc.text(`RUT: ${formatRut(jugador.rut)}`, 50, y + 35, { align: 'center' })
   doc.text('SOCIEDAD NUEVA FÚTBOL CHILE SpA', 155, y + 30, { align: 'center' })
   doc.text('RUT: 77.971.556-6', 155, y + 35, { align: 'center' })
 

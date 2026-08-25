@@ -1,6 +1,7 @@
 // Generador de Contrato de Representación NFC
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
+import { formatRut } from './formatRut'
 
 const NAVY = [27, 43, 94]
 const GOLD = [201, 168, 76]
@@ -131,7 +132,7 @@ export async function generarContratoPDF(datos) {
   }
 
   const nombreJugador = jugador.nombre.toUpperCase()
-  const rutJugador = jugador.rut
+  const rutJugador = formatRut(jugador.rut)
   const domicilio = jugador.domicilio || 'a indicar'
   const comuna = jugador.comuna || 'Santiago'
 
@@ -151,7 +152,7 @@ export async function generarContratoPDF(datos) {
 
   let compareciente = ''
   if (esMenor && tutores && tutores.length > 0) {
-    const tutorStr = tutores.map(t => `don/doña ${t.nombre}, cédula de identidad número ${t.rut}`).join('; y ')
+    const tutorStr = tutores.map(t => `don/doña ${t.nombre}, cédula de identidad número ${formatRut(t.rut)}`).join('; y ')
     compareciente = `En ${ciudad || 'SANTIAGO'}, a ${fechaContrato}, entre don ${nombreJugador}, ${nacionalidad}, ${ocupacion}, cédula de identidad número ${rutJugador}, nacido/a el ${fechaNacStr}, y ${tutorStr}, en su calidad de padre/madre/representante legal, todos domiciliados para estos efectos en ${domicilio}, ${comuna}, en adelante también e indistintamente el "Jugador", representado por sus padres/tutores por ser menor de edad; y por la otra la SOCIEDAD NUEVA FUTBOL CHILE SpA, Rol Único Tributario Número 77.971.556-6, representada por don ALDO CAMILO MALDONADO REBOLLEDO, chileno, factor de comercio, cédula nacional de identidad número 10.370.416-2, Agente FIFA, Licencia número 202406-7288, domiciliado para estos efectos en Avenida Larraín #5682, Piso 13, La Reina, Región Metropolitana, en adelante también la "Agencia".`
   } else {
     compareciente = `En ${ciudad || 'SANTIAGO'}, a ${fechaContrato}, entre don/doña ${nombreJugador}, ${nacionalidad}, ${ocupacion}, cédula de identidad número ${rutJugador}, nacido/a el ${fechaNacStr}, domiciliado/a para estos efectos en ${domicilio}, ${comuna}, en adelante también e indistintamente el "Jugador"; y por la otra la SOCIEDAD NUEVA FUTBOL CHILE SpA, Rol Único Tributario Número 77.971.556-6, representada por don ALDO CAMILO MALDONADO REBOLLEDO, chileno, factor de comercio, cédula nacional de identidad número 10.370.416-2, Agente FIFA, Licencia número 202406-7288, domiciliado para estos efectos en Avenida Larraín #5682, Piso 13, La Reina, Región Metropolitana, en adelante también la "Agencia".`
@@ -266,7 +267,7 @@ export async function generarContratoPDF(datos) {
   const sigBlocks = []
   if (esMenor && tutores && tutores.length > 0) {
     sigBlocks.push({ nombre: nombreJugador, rut: rutJugador, label: 'JUGADOR' })
-    tutores.forEach(t => sigBlocks.push({ nombre: t.nombre.toUpperCase(), rut: t.rut, label: 'REPRESENTANTE LEGAL' }))
+    tutores.forEach(t => sigBlocks.push({ nombre: t.nombre.toUpperCase(), rut: formatRut(t.rut), label: 'REPRESENTANTE LEGAL' }))
     sigBlocks.push({ nombre: 'ALDO CAMILO MALDONADO REBOLLEDO', rut: '10.370.416-2', label: 'NUEVA FÚTBOL CHILE SpA' })
   } else {
     sigBlocks.push({ nombre: nombreJugador, rut: rutJugador, label: 'JUGADOR' })

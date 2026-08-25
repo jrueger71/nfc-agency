@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { formatRut } from '../lib/formatRut'
 import PlayerForm from '../components/PlayerForm'
 import ClubContractForm from '../components/ClubContractForm'
 import AgencyContractForm from '../components/AgencyContractForm'
@@ -657,7 +658,7 @@ export default function PlayersAdmin() {
                   return (
                     <tr key={p.id}>
                       <td style={{ color: '#fff', fontWeight: 500 }}>{p.name}</td>
-                      <td style={{ fontFamily: 'monospace', fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>{p.rut || '—'}</td>
+                      <td style={{ fontFamily: 'monospace', fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>{formatRut(p.rut) || '—'}</td>
                       <td>{ci.position || '—'}</td>
                       <td>{ci.club_name || '—'}</td>
                       <td>{fmtDate(p.birth_date)}</td>
