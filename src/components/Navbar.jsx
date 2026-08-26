@@ -17,11 +17,11 @@ export default function Navbar() {
   const navItems = [
     { label: 'Jugadores',    path: '/',                show: true },
     { label: 'Dashboard',   path: '/dashboard',       show: !!session },
-    { label: 'Finanzas',    path: '/finanzas',        show: !!session && (userRole === 'admin' || userRole === 'digitador') },
-    { label: 'Plantel Admin', path: '/admin/jugadores', show: !!session && userRole === 'admin' },
+    { label: 'Finanzas',    path: '/finanzas',        show: !!session && ['admin','digitador','agente'].includes(userRole) },
+    { label: 'Plantel Admin', path: '/admin/jugadores', show: !!session && ['admin','agente'].includes(userRole) },
     { label: 'Scouting',    path: '/admin/scouting',  show: !!session && ['admin','agente','socio'].includes(userRole) },
     { label: 'Noticias',    path: '/admin/noticias',  show: !!session && userRole === 'admin' },
-    { label: 'RRSS',        path: '/admin/rrss',      show: !!session && userRole === 'admin' },
+    { label: 'RRSS',        path: '/admin/rrss',      show: !!session && ['admin','agente'].includes(userRole) },
     { label: 'Usuarios',    path: '/admin/usuarios',  show: !!session && userRole === 'admin' },
   ]
 

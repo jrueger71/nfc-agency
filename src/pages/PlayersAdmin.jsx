@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../App'
 import { supabase } from '../lib/supabase'
 import { formatRut } from '../lib/formatRut'
 import PlayerForm from '../components/PlayerForm'
@@ -501,7 +502,9 @@ function PedidosTab({ players }) {
                                   📎
                                 </button>
                               )}
-                              <button onClick={() => handleDelete(o.id)} style={{ fontSize: 10, padding: '3px 6px', borderRadius: 3, border: '1px solid rgba(248,113,113,0.3)', background: 'transparent', color: '#f87171', cursor: 'pointer', fontFamily: 'inherit' }}>✕</button>
+                              {isAdmin && (
+                                <button onClick={() => handleDelete(o.id)} style={{ fontSize: 10, padding: '3px 6px', borderRadius: 3, border: '1px solid rgba(248,113,113,0.3)', background: 'transparent', color: '#f87171', cursor: 'pointer', fontFamily: 'inherit' }}>✕</button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -552,6 +555,8 @@ function PedidosTab({ players }) {
 // ─── PlayersAdmin principal ───────────────────────────────────────────────────
 export default function PlayersAdmin() {
   const navigate = useNavigate()
+  const { userRole } = useAuth()
+  const isAdmin = userRole === 'admin'
   const [players, setPlayers] = useState([])
   const [clubContracts, setClubContracts] = useState([])
   const [agencyContracts, setAgencyContracts] = useState([])

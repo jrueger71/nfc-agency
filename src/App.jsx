@@ -70,11 +70,11 @@ export default function App() {
         <Route path="/login" element={session ? <Navigate to="/dashboard" /> : <Login />} />
         <Route path="/actualizar-password" element={<ActualizarPassword />} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/finanzas" element={<ProtectedRoute allowedRoles={['admin','digitador']}><Finanzas /></ProtectedRoute>} />
-        <Route path="/admin/jugadores" element={<ProtectedRoute allowedRoles={['admin']}><PlayersAdmin /></ProtectedRoute>} />
+        <Route path="/finanzas" element={<ProtectedRoute allowedRoles={['admin','digitador','agente']}><Finanzas /></ProtectedRoute>} />
+        <Route path="/admin/jugadores" element={<ProtectedRoute allowedRoles={['admin','agente']}><PlayersAdmin /></ProtectedRoute>} />
         <Route path="/admin/noticias" element={<ProtectedRoute allowedRoles={['admin']}><Noticias /></ProtectedRoute>} />
-        <Route path="/admin/documentos/:playerId" element={<ProtectedRoute allowedRoles={['admin']}><Documentos /></ProtectedRoute>} />
-        <Route path="/admin/rrss" element={<ProtectedRoute allowedRoles={['admin']}><RRSS /></ProtectedRoute>} />
+        <Route path="/admin/documentos/:playerId" element={<ProtectedRoute allowedRoles={['admin','agente']}><Documentos /></ProtectedRoute>} />
+        <Route path="/admin/rrss" element={<ProtectedRoute allowedRoles={['admin','agente']}><RRSS /></ProtectedRoute>} />
         <Route path="/admin/usuarios" element={<ProtectedRoute allowedRoles={['admin']}><Usuarios /></ProtectedRoute>} />
         <Route path="/admin/scouting" element={<ProtectedRoute allowedRoles={['admin','agente','socio']}><Scouting /></ProtectedRoute>} />
       </Routes>
