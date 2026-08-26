@@ -5,6 +5,7 @@ import Navbar from './components/Navbar'
 import Landing from './pages/Landing'
 import PlayerDetail from './pages/PlayerDetail'
 import Login from './pages/Login'
+import ActualizarPassword from './pages/ActualizarPassword'
 import Dashboard from './pages/Dashboard'
 import PlayersAdmin from './pages/PlayersAdmin'
 import Finanzas from './pages/Finanzas'
@@ -67,6 +68,7 @@ export default function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/jugador/:id" element={<PlayerDetail />} />
         <Route path="/login" element={session ? <Navigate to="/dashboard" /> : <Login />} />
+        <Route path="/actualizar-password" element={<ActualizarPassword />} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/finanzas" element={<ProtectedRoute allowedRoles={['admin','digitador']}><Finanzas /></ProtectedRoute>} />
         <Route path="/admin/jugadores" element={<ProtectedRoute allowedRoles={['admin']}><PlayersAdmin /></ProtectedRoute>} />

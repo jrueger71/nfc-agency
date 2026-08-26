@@ -128,7 +128,7 @@ export default function Usuarios() {
 
   const handleReenviarEmail = async (email) => {
     await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/login`,
+      redirectTo: `${window.location.origin}/actualizar-password`,
     })
     setMsg(`✓ Email de contraseña reenviado a ${email}`)
     setTimeout(() => setMsg(''), 4000)
