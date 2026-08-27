@@ -379,7 +379,7 @@ function PedidosTab({ players }) {
       {showForm && (
         <div className="card" style={{ marginBottom: 20, border: '1px solid rgba(201,168,76,0.25)' }}>
           <div style={{ fontSize: 11, color: GOLD, fontWeight: 600, letterSpacing: 1.5, marginBottom: 16 }}>NUEVO PEDIDO</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12, marginBottom: 20 }}>
+          <div className="grid-2-wide" style={{ marginBottom: 20 }}>
             <div><label style={LABEL}>FECHA DEL PEDIDO</label><input style={INPUT} type="date" value={fechaPedido} onChange={e => setFechaPedido(e.target.value)} /></div>
             <div><label style={LABEL}>NOTAS</label><input style={INPUT} value={notasPedido} onChange={e => setNotasPedido(e.target.value)} placeholder="Ej: Compra temporada 2026..." /></div>
           </div>

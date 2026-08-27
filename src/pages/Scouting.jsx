@@ -132,7 +132,7 @@ function ModalContactos({ jugador, onClose }) {
         {showForm && (
           <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(201,168,76,0.2)',
             borderRadius: 8, padding: 14, marginBottom: 16 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+            <div className="grid-2" style={{ gap: 10, marginBottom: 10 }}>
               <div>
                 <label style={LABEL}>FECHA</label>
                 <input style={INPUT} type="date" value={form.fecha}
@@ -256,7 +256,7 @@ function ScoutingForm({ jugador, userEmail, onSave, onCancel }) {
         {isEdit ? 'EDITAR JUGADOR' : 'AGREGAR JUGADOR AL RADAR'}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      <div className="grid-2" style={{ gap: 12 }}>
         {/* Estado */}
         <div>
           <label style={LABEL}>ESTADO</label>

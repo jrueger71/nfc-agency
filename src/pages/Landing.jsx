@@ -155,7 +155,7 @@ export default function Landing() {
       <section style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
         <ParticleField />
         <div style={{ position: 'absolute', top: 0, right: 0, width: '55%', height: '100%', background: 'linear-gradient(135deg, transparent 0%, rgba(27,43,94,0.25) 100%)', clipPath: 'polygon(20% 0, 100% 0, 100% 100%, 0% 100%)' }} />
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '80px 24px 60px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, alignItems: 'center', position: 'relative', zIndex: 1, width: '100%' }}>
+        <div className="grid-2" style={{ maxWidth: 1100, margin: '0 auto', padding: '80px 24px 60px', gap: 40, alignItems: 'center', position: 'relative', zIndex: 1, width: '100%' }}>
           <div style={{ transition: 'all 1s', opacity: heroVisible ? 1 : 0, transform: heroVisible ? 'translateY(0)' : 'translateY(30px)' }}>
             <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: 4, color: GOLD, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ display: 'inline-block', width: 24, height: 1, background: GOLD }} />
@@ -354,7 +354,7 @@ export default function Landing() {
           <h2 style={{ fontFamily: 'Bebas Neue', fontSize: 'clamp(26px,4vw,42px)', color: '#fff', letterSpacing: 2, marginBottom: 12 }}>CONVERSEMOS</h2>
           <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 40, lineHeight: 1.7 }}>Representamos talento en todas las posiciones. Si crees que tienes lo que se necesita, escríbenos.</p>
           <form onSubmit={handleContact} style={{ display: 'flex', flexDirection: 'column', gap: 12, textAlign: 'left' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="grid-2" style={{ gap: 12 }}>
               {[['NOMBRE', 'nombre', 'text', 'Tu nombre completo'], ['EMAIL', 'email', 'email', 'tu@email.com']].map(([lbl, key, type, ph]) => (
                 <div key={key}>
                   <label style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', letterSpacing: 1, display: 'block', marginBottom: 4 }}>{lbl}</label>

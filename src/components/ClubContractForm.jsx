@@ -150,7 +150,7 @@ export default function ClubContractForm({ contract, playerId, playerName, playe
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+      <div className="grid-2" style={{ gap: 14 }}>
 
         {/* Tipo */}
         <div style={{ gridColumn: '1/-1' }}>

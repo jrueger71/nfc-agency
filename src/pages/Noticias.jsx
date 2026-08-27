@@ -176,7 +176,7 @@ export default function Noticias({ publicView = false }) {
       {isAdmin && showForm && (
         <div className="card" style={{marginBottom:20,maxWidth:660}}>
           <div className="bebas" style={{fontSize:15,letterSpacing:2,color:GOLD,marginBottom:16}}>NUEVA PUBLICACIÓN</div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+          <div className="grid-2" style={{gap:14}}>
             <div style={{gridColumn:'1/-1'}}>
               <label style={LABEL}>TÍTULO *</label>
               <input style={INPUT} value={form.titulo} onChange={e=>setF('titulo',e.target.value)} placeholder="¡Leonardo marca su primer gol profesional!"/>

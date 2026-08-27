@@ -269,7 +269,7 @@ export default function Documentos() {
 
       {/* ===== CONTRATO ===== */}
       {tab==='contrato' && (
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}}>
+        <div className="grid-2" style={{gap:20}}>
           <div className="card">
             <div className="bebas" style={{fontSize:15,letterSpacing:2,color:GOLD,marginBottom:16}}>DATOS DEL CONTRATO</div>
             <div style={{display:'flex',flexDirection:'column',gap:14}}>
@@ -405,7 +405,7 @@ export default function Documentos() {
 
       {/* ===== ANEXO A ===== */}
       {tab==='anexo' && (
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}}>
+        <div className="grid-2" style={{gap:20}}>
           <div>
             <div className="card" style={{marginBottom:16}}>
               <div className="bebas" style={{fontSize:15,letterSpacing:2,color:GOLD,marginBottom:16}}>CONFIGURACIÓN ANEXO A</div>
@@ -423,8 +423,8 @@ export default function Documentos() {
               {transactions.length === 0 ? (
                 <div style={{fontSize:12,color:'rgba(255,255,255,0.25)',textAlign:'center',padding:16}}>Sin transacciones registradas para este jugador</div>
               ) : (
-                <div style={{maxHeight:200,overflowY:'auto'}}>
-                  <table style={{width:'100%',borderCollapse:'collapse',fontSize:11}}>
+                <div style={{maxHeight:200,overflowY:'auto',overflowX:'auto'}}>
+                  <table style={{width:'100%',borderCollapse:'collapse',fontSize:11,minWidth:320}}>
                     <thead><tr>
                       <th style={{textAlign:'left',color:'rgba(255,255,255,0.35)',padding:'4px 6px',borderBottom:'1px solid rgba(255,255,255,0.06)',fontSize:10}}>Fecha</th>
                       <th style={{textAlign:'left',color:'rgba(255,255,255,0.35)',padding:'4px 6px',borderBottom:'1px solid rgba(255,255,255,0.06)',fontSize:10}}>Concepto</th>
@@ -452,7 +452,7 @@ export default function Documentos() {
               </div>
               {anexoForm.extraRows.map((row,idx)=>(
                 <div key={idx} style={{background:'rgba(255,255,255,0.03)',borderRadius:6,padding:10,marginBottom:8}}>
-                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:6}}>
+                  <div className="grid-2" style={{gap:8,marginBottom:6}}>
                     <div>
                       <label style={{...LABEL,fontSize:9}}>FECHA</label>
                       <input style={{...INPUT,padding:'6px 10px',fontSize:12}} type="date" value={row.transaction_date} onChange={e=>updateExtraRow(idx,'transaction_date',e.target.value)}/>

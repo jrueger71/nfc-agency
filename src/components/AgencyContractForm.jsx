@@ -151,7 +151,7 @@ export default function AgencyContractForm({ contract, playerId, playerName, pla
         )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+      <div className="grid-2" style={{ gap: 14 }}>
         <div>
           <label style={LABEL}>FECHA DE INCORPORACIÓN</label>
           <input style={INPUT} type="date" value={form.incorporation_date || ''}

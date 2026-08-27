@@ -159,7 +159,7 @@ export default function Usuarios() {
           <div style={{ fontSize: 11, color: GOLD, fontWeight: 600, letterSpacing: 1.5, marginBottom: 16 }}>
             CREAR NUEVO USUARIO
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+          <div className="grid-2" style={{ gap: 12, marginBottom: 16 }}>
             <div>
               <label style={LABEL}>NOMBRE COMPLETO</label>
               <input style={INPUT} value={nombre} onChange={e => setNombre(e.target.value)}

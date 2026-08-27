@@ -179,7 +179,7 @@ export default function DocsEspeciales() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+      <div className="grid-2" style={{ gap: 16 }}>
 
         {/* Columna izquierda */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -263,7 +263,7 @@ export default function DocsEspeciales() {
               </label>
             </div>
             {incluyeComision && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div className="grid-2" style={{ gap: 10 }}>
                 <div>
                   <label style={LABEL}>NFC (%)</label>
                   <input style={INPUT} type="number" min="0" max="100" value={comisionNFC}
@@ -298,7 +298,7 @@ export default function DocsEspeciales() {
               </button>
             </div>
             {clubes.map((club, i) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 100px 30px', gap: 8, marginBottom: 8, alignItems: 'end' }}>
+              <div key={i} className="field-row-del" style={{ marginBottom: 8 }}>
                 <div>
                   {i === 0 && <label style={LABEL}>NOMBRE DEL CLUB</label>}
                   <input style={INPUT} value={club.nombre}
@@ -324,7 +324,7 @@ export default function DocsEspeciales() {
             <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontWeight: 600, letterSpacing: 1.5, marginBottom: 14 }}>
               VIGENCIA Y LUGAR
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div className="grid-2" style={{ gap: 10 }}>
               <div style={{ gridColumn: '1/-1' }}>
                 <label style={LABEL}>CIUDAD</label>
                 <input style={INPUT} value={ciudad} onChange={e => setCiudad(e.target.value)} />
@@ -461,7 +461,7 @@ export function ListadoJugadores({ players, clubMap }) {
       </div>
       {msg && <div style={{marginBottom:16,fontSize:13,color:msg.startsWith('✓')?'#4ade80':'#f87171'}}>{msg}</div>}
 
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16}}>
+      <div className="grid-2" style={{gap:16,marginBottom:16}}>
         <div className="card">
           <div style={{fontSize:11,color:'rgba(255,255,255,0.35)',fontWeight:600,letterSpacing:1.5,marginBottom:14}}>DATOS DEL DOCUMENTO</div>
           <div style={{marginBottom:10}}>
@@ -588,7 +588,7 @@ export function DeclaracionConflicto() {
       </div>
       {msg && <div style={{marginBottom:16,fontSize:13,color:msg.startsWith('✓')?'#4ade80':'#f87171'}}>{msg}</div>}
 
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+      <div className="grid-2" style={{gap:16}}>
         <div style={{display:'flex',flexDirection:'column',gap:14}}>
           <div className="card">
             <div style={{fontSize:11,color:'rgba(255,255,255,0.35)',fontWeight:600,letterSpacing:1.5,marginBottom:14}}>DATOS DEL DOCUMENTO</div>

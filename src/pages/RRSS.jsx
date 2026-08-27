@@ -331,13 +331,13 @@ export default function RRSS() {
         <button onClick={download} className="btn-gold">⬇ DESCARGAR PNG</button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 16, alignItems: 'start' }}>
+      <div className="sidebar-layout">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
 
           {/* Plantillas */}
           <div className="card">
             <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontWeight: 600, letterSpacing: 1.5, marginBottom: 10 }}>PLANTILLA</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 5 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(56px, 1fr))', gap: 5 }}>
               {TMPLS.map(t => (
                 <button key={t.id} onClick={() => {
                   setTmpl(t)
@@ -404,7 +404,7 @@ export default function RRSS() {
                 <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginBottom: 6 }}>
                   Selecciona hasta 3 fotos (la 1ª es la principal)
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 5, marginBottom: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))', gap: 5, marginBottom: 10 }}>
                   {playerPhotos.map((url, idx) => {
                     const sel = selectedPhotos.includes(idx)
                     const order = selectedPhotos.indexOf(idx)

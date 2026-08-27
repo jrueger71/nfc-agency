@@ -175,7 +175,7 @@ export default function PlayerForm({ player, onSave, onCancel }) {
 
       {/* ── DATOS PERSONALES ─────────────────────────────────────────────── */}
       {SECTION_TITLE('DATOS PERSONALES')}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+      <div className="grid-2" style={{ gap: 14 }}>
         <div style={{ gridColumn: '1/-1' }}>
           <label style={LABEL}>NOMBRE COMPLETO *</label>
           <input style={INPUT} value={form.name} onChange={e => set('name', e.target.value)} placeholder="Juan Carlos Pérez López" />
@@ -247,7 +247,7 @@ export default function PlayerForm({ player, onSave, onCancel }) {
 
       {/* ── DATOS DE CONTACTO ────────────────────────────────────────────── */}
       {SECTION_TITLE('DATOS DE CONTACTO')}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+      <div className="grid-2" style={{ gap: 14 }}>
         <div style={{ gridColumn: '1/-1' }}>
           <label style={LABEL}>DIRECCIÓN</label>
           <input style={INPUT} value={contact.address} onChange={e => setC('address', e.target.value)}

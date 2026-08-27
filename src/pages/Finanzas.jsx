@@ -262,7 +262,7 @@ export default function Finanzas() {
               ))}
             </div>
           </div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+          <div className="grid-2" style={{gap:14}}>
             <div>
               <label style={LABEL}>JUGADOR</label>
               <select style={INPUT} value={form.player_id} onChange={e=>setF('player_id',e.target.value)}>
